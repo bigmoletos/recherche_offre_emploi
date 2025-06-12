@@ -1,0 +1,157 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.test
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+log/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Docker
+.dockerignore
+
+# Node modules (pour n8n custom)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Excel et autres fichiers de sortie
+*.xlsx
+*.xls
+*.csv
+outputs/
+output/
+
+# Données sensibles
+**/config/.env
+**/.env
+**/secrets/
+**/credentials/
+**/keys/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Media files (si volumineux)
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+
+# Compiled source
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Specific project exclusions
+**/venv_ansible/
+**/static_docs/
+**/instance/
+**/migrations/
+agent_n8n/venv/
+agent_python/venv/
+
+# Fichiers spécifiques au projet
+*.pdf
+*.doc
+*.docx
+*.json
+!services/cv-extraction-service/src/models/schemas.json
+!services/excel-generator-service/src/models/schemas.json

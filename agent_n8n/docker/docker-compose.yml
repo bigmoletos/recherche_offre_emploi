@@ -1,0 +1,147 @@
+services:
+  # === SERVICE N8N ===
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n_alternance_agent
+    restart: unless-stopped
+    ports:
+      - "8080:5678"
+    environment:
+      # Configuration de base
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+
+      # Authentification
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${LOGIN_N8N}
+      - N8N_BASIC_AUTH_PASSWORD=${PASSWORD_N8N}
+
+      # Sécurité
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-your_default_encryption_key_here}
+      - N8N_USER_MANAGEMENT_DISABLED=false
+
+      # Personnalisation
+      - N8N_EDITOR_BASE_URL=http://localhost:8080
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+
+      # Logs et debug
+      - N8N_LOG_LEVEL=info
+      - N8N_LOG_OUTPUT=console
+
+      # Executions
+      - EXECUTIONS_PROCESS=main
+      - EXECUTIONS_TIMEOUT=3600
+      - EXECUTIONS_TIMEOUT_MAX=7200
+
+      # Workflow settings
+      - N8N_METRICS=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+
+      # === VARIABLES MISTRAL ===
+      - mistral_key_site_emploi=iISnB6RgjwRnpAF09peyjNjDS6HaUUvr
+      - MISTRAL_API_KEY_CURSOR_MCP_SERVER=fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95
+
+    volumes:
+      # Données persistantes n8n
+      - n8n_data:/home/node/.n8n
+
+      # Scripts Python de l'agent (lecture seule)
+      - ./python_scrapers:/app/scrapers:ro
+      - ./ai_filters:/app/ai_filters:ro
+      - ./excel_generator:/app/excel_generator:ro
+
+      # Répertoires de sortie
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+
+      # Configuration
+      - ./.env:/app/.env:ro
+
+    # env_file:
+    #   - ../config/.env
+
+    networks:
+      - n8n_network
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # === SERVICE POSTGRESQL (Optionnel) ===
+  # Décommenter si vous voulez utiliser PostgreSQL au lieu de SQLite
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: postgres_n8n
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_DB=n8n
+  #     - POSTGRES_USER=n8n
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-n8n_password}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - n8n_network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U n8n"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # === SERVICE REDIS (Optionnel pour performance) ===
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: redis_n8n
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - n8n_network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # === SERVICE PYTHON AGENT (Désactivé temporairement) ===
+  # Service Python dédié pour les scrapers - à réactiver plus tard
+  # python_agent:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.python
+  #   container_name: python_alternance_agent
+  #   restart: unless-stopped
+  #   environment:
+  #     - PYTHONPATH=/app
+  #     - LOG_LEVEL=INFO
+  #   volumes:
+  #     - ./outputs:/app/outputs
+  #     - ./logs:/app/logs
+  #     - ./.env:/app/.env:ro
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - n8n_network
+  #   depends_on:
+  #     - n8n
+  #   command: ["python", "-m", "http.server", "8080"]
+
+# === VOLUMES PERSISTANTS ===
+volumes:
+  n8n_data:
+    driver: local
+
+  # postgres_data:
+  #   driver: local
+
+  # redis_data:
+  #   driver: local
+
+# === RÉSEAU ===
+networks:
+  n8n_network:
+    driver: bridge

@@ -1,0 +1,95 @@
+# Dockerfile N8N Custom avec modules additionnels
+FROM docker.n8n.io/n8nio/n8n:latest
+
+# Informations sur l'image
+LABEL maintainer="Agent Alternance" \
+      description="N8N Custom avec node-fetch et modules additionnels" \
+      version="1.0.0"
+
+# Passer en utilisateur root temporairement pour les installations
+USER root
+
+# Installation des modules Node.js additionnels globalement
+RUN npm install -g \
+        node-fetch@2 \
+        axios \
+        lodash \
+        moment \
+        uuid \
+        crypto-js \
+        cheerio \
+        xml2js \
+        csv-parser \
+        dotenv
+
+# Création d'un répertoire modules dédié pour N8N
+RUN mkdir -p /usr/local/lib/custom_modules && \
+    cd /usr/local/lib/custom_modules && \
+    npm init -y && \
+    npm install --save \
+        node-fetch@2 \
+        axios \
+        lodash \
+        moment \
+        uuid \
+        crypto-js \
+        cheerio \
+        xml2js \
+        csv-parser \
+        dotenv
+
+# Configuration NODE_PATH pour inclure les modules globaux et custom
+ENV NODE_PATH="/usr/local/lib/custom_modules/node_modules:/usr/local/lib/node_modules"
+
+# Installation d'outils système utiles
+RUN apk add --no-cache \
+    curl \
+    wget \
+    jq \
+    git \
+    python3 \
+    py3-pip
+
+# Installation des modules Python directement dans le système (pour N8N sandbox)
+RUN pip3 install --break-system-packages --no-cache-dir \
+        requests \
+        beautifulsoup4 \
+        pandas \
+        python-dotenv \
+        lxml \
+        urllib3
+
+# Installation aussi dans un environnement virtuel pour compatibilité
+RUN python3 -m venv /opt/venv && \
+    . /opt/venv/bin/activate && \
+    pip install --no-cache-dir \
+        requests \
+        beautifulsoup4 \
+        pandas \
+        python-dotenv \
+        lxml \
+        urllib3
+
+# Ajout du venv au PATH
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONPATH="/opt/venv/lib/python3.11/site-packages:/usr/lib/python3.11/site-packages"
+
+# Création du répertoire de travail pour scripts
+RUN mkdir -p /app/scripts && \
+    chown -R node:node /app
+
+# Copie des scripts de configuration
+COPY ../setup_n8n_credentials.py /app/setup_n8n_credentials.py
+COPY init_n8n.sh /app/init_n8n.sh
+
+# Rendre les scripts exécutables
+RUN chmod +x /app/setup_n8n_credentials.py && \
+    chmod +x /app/init_n8n.sh && \
+    chown node:node /app/setup_n8n_credentials.py && \
+    chown node:node /app/init_n8n.sh
+
+# Revenir à l'utilisateur node pour la sécurité
+USER node
+
+# Commande par défaut (hérite de l'image N8N)
+# La commande sera écrasée par docker-compose

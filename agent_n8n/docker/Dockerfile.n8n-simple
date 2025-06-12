@@ -1,0 +1,65 @@
+# Dockerfile N8N Simple avec tous les modules requis
+FROM docker.n8n.io/n8nio/n8n:latest
+
+# Informations sur l'image
+LABEL maintainer="Agent Alternance" \
+      description="N8N avec modules Node.js personnalisés" \
+      version="2.0.0"
+
+# Passer en utilisateur root temporairement
+USER root
+
+# Créer un répertoire pour les modules globaux
+RUN mkdir -p /usr/local/lib/custom_modules
+
+# Installation des modules requis globalement
+RUN npm install -g \
+    node-fetch@2 \
+    axios \
+    cheerio \
+    dotenv \
+    lodash \
+    moment \
+    uuid \
+    crypto-js \
+    xml2js \
+    csv-parser
+
+# Installation aussi en local pour plus de compatibilité
+RUN cd /usr/local/lib/custom_modules && \
+    npm init -y && \
+    npm install --save \
+        node-fetch@2 \
+        axios \
+        cheerio \
+        dotenv \
+        lodash \
+        moment \
+        uuid \
+        crypto-js \
+        xml2js \
+        csv-parser
+
+# Mise à jour du NODE_PATH pour inclure notre répertoire
+ENV NODE_PATH="/usr/local/lib/custom_modules/node_modules:/usr/local/lib/node_modules:${NODE_PATH}"
+
+# Installation d'outils système utiles
+RUN apk add --no-cache \
+    curl \
+    wget \
+    jq
+
+# Copie et setup du script de vérification
+COPY check-modules.js /app/check-modules.js
+RUN chmod +x /app/check-modules.js && \
+    chown node:node /app/check-modules.js
+
+# Création d'un script de test pour tous les modules
+RUN echo 'const modules = ["node-fetch", "axios", "cheerio", "dotenv", "lodash", "moment", "uuid", "crypto-js", "xml2js", "csv-parser"]; modules.forEach(m => { try { require(m); console.log("✅", m, "disponible"); } catch(e) { console.log("❌", m, "non disponible:", e.message); } });' > /app/test-modules.js && \
+    chown node:node /app/test-modules.js
+
+# Revenir à l'utilisateur node
+USER node
+
+# Test que tous les modules sont bien accessibles
+RUN node /app/test-modules.js

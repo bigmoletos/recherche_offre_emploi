@@ -1,0 +1,93 @@
+services:
+  # === SERVICE N8N CUSTOM ===
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile.n8n-custom
+    image: n8n-custom-alternance:latest
+    container_name: n8n_alternance_agent_custom
+    restart: unless-stopped
+    ports:
+      - "7080:5678"
+    environment:
+      # Configuration de base
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+
+      # Authentification
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${LOGIN_N8N}
+      - N8N_BASIC_AUTH_PASSWORD=${PASSWORD_N8N}
+
+      # Sécurité
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-your_default_encryption_key_here}
+      - N8N_USER_MANAGEMENT_DISABLED=false
+
+      # Personnalisation
+      - N8N_EDITOR_BASE_URL=http://localhost:7080
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+
+      # Logs et debug
+      - N8N_LOG_LEVEL=info
+      - N8N_LOG_OUTPUT=console
+
+      # Executions
+      - EXECUTIONS_PROCESS=main
+      - EXECUTIONS_TIMEOUT=3600
+      - EXECUTIONS_TIMEOUT_MAX=7200
+
+      # Workflow settings
+      - N8N_METRICS=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+
+      # === VARIABLES MISTRAL ===
+      - mistral_key_site_emploi=${mistral_key_site_emploi}
+      - MISTRAL_API_KEY_CURSOR_MCP_SERVER=${MISTRAL_API_KEY_CURSOR_MCP_SERVER}
+
+      # === AUTO-CONFIGURATION ===
+      - N8N_URL=http://localhost:5678
+      - ENABLE_AUTO_CONFIG=${ENABLE_AUTO_CONFIG:-true}
+
+    volumes:
+      # Données persistantes n8n
+      - n8n_data:/home/node/.n8n
+
+      # Scripts Python de l'agent (lecture seule)
+      - ./python_scrapers:/app/scrapers:ro
+      - ./ai_filters:/app/ai_filters:ro
+      - ./excel_generator:/app/excel_generator:ro
+
+      # Répertoires de sortie
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+
+      # Configuration
+      - ./.env:/app/.env:ro
+
+    env_file:
+      - ../config/.env
+
+    networks:
+      - n8n_network
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Commande corrigée pour démarrer N8N
+    # command: ["n8n", "start"]  # Utilise la commande par défaut de l'image
+
+# === VOLUMES PERSISTANTS ===
+volumes:
+  n8n_data:
+    driver: local
+
+# === RÉSEAU ===
+networks:
+  n8n_network:
+    driver: bridge
