@@ -1,0 +1,242 @@
+{
+  "name": "Agent Alternance - Final avec Email",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-daily",
+      "name": "Déclencheur Quotidien (9h)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Générateur de données enrichies\nconst offers = [\n  {\n    title: \"Alternance Cybersécurité - Analyste SOC H/F\",\n    company: \"SecureTech Solutions\",\n    location: \"Paris (75)\",\n    duration: \"24 mois\",\n    start_date: \"septembre 2025\",\n    description: \"Recherchons alternant pour poste d'analyste SOC. Formation cybersécurité Master 1/2. Missions: monitoring sécurité, analyse incidents, reporting.\",\n    url: \"https://example.com/offer1\",\n    scraper_source: \"pole_emploi\",\n    scraped_at: new Date().toISOString()\n  },\n  {\n    title: \"Formation Cybersécurité - École Supérieure\",\n    company: \"École Supérieure Informatique\",\n    location: \"Lyon (69)\",\n    duration: \"3 ans\",\n    start_date: \"septembre 2025\",\n    description: \"Formation diplômante en cybersécurité. Programme complet théorique avec stages en entreprise.\",\n    url: \"https://example.com/formation1\",\n    scraper_source: \"indeed\",\n    scraped_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance DevSecOps - Infrastructure Sécurisée\",\n    company: \"TechCorp Enterprise\",\n    location: \"Marseille (13)\",\n    duration: \"18 mois\",\n    start_date: \"septembre 2025\",\n    description: \"Poste d'alternant DevSecOps. Mission: automatisation sécurité, CI/CD sécurisé, audit infrastructure.\",\n    url: \"https://example.com/offer3\",\n    scraper_source: \"apec\",\n    scraped_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance Pentester Junior - Audit Sécurité\",\n    company: \"CyberSec Consulting\",\n    location: \"Toulouse (31)\",\n    duration: \"24 mois\",\n    start_date: \"octobre 2025\",\n    description: \"Alternance pentesting et audit sécurité. Formation sur tests d'intrusion, analyse vulnérabilités.\",\n    url: \"https://example.com/offer4\",\n    scraper_source: \"linkedin\",\n    scraped_at: new Date().toISOString()\n  }\n];\n\nconsole.log(`📋 Génération de ${offers.length} offres de test`);\n\nreturn offers.map(offer => ({ json: offer }));"
+      },
+      "id": "data-generator-enriched",
+      "name": "Scrapers Enrichis",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 240]
+    },
+    {
+      "parameters": {
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $credentials.mistralCloudApi.apiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-large-latest\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Tu es un expert en filtrage d'offres d'emploi spécialisé en cybersécurité. Analyse l'offre et détermine si c'est une VRAIE alternance en entreprise (contrat d'apprentissage/professionnalisation) ou une simple formation d'école. Réponds UNIQUEMENT par 'VALIDE' pour les vraies alternances ou 'INVALIDE: raison' pour les formations/écoles.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyse cette offre:\\n\\nTitre: {{ $json.title }}\\nEntreprise: {{ $json.company }}\\nDescription: {{ $json.description }}\\nDurée: {{ $json.duration }}\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 50\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "mistral-classifier",
+      "name": "Classification Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 240],
+      "credentials": {
+        "mistralCloudApi": {
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Traitement sécurisé et formatage\nconst originalData = $input.first()?.json || {};\nconst mistralResponse = $json;\n\nconsole.log('🔍 Traitement offre:', originalData.title);\n\n// Extraction sécurisée\nlet aiResponse = 'ERREUR';\ntry {\n  if (mistralResponse?.choices?.[0]?.message?.content) {\n    aiResponse = mistralResponse.choices[0].message.content.trim();\n  }\n} catch (error) {\n  console.error('Erreur extraction:', error);\n}\n\n// Classification avec fallback\nlet isValid = false;\nif (aiResponse.toUpperCase().includes('VALIDE')) {\n  isValid = true;\n} else if (aiResponse.toUpperCase().includes('INVALIDE')) {\n  isValid = false;\n} else {\n  // Fallback: alternance dans le titre = valide\n  isValid = originalData.title?.toLowerCase().includes('alternance') || false;\n}\n\n// Formatage final\nconst result = {\n  ...originalData,\n  ai_response: aiResponse,\n  is_valid: isValid,\n  status: isValid ? '✅ VALIDÉE' : '❌ REJETÉE',\n  processed_at: new Date().toISOString()\n};\n\nconsole.log(`🎯 ${result.title} → ${result.status}`);\n\nreturn { json: result };"
+      },
+      "id": "process-response",
+      "name": "Traitement Sécurisé",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "filter-valid",
+      "name": "Filtrer Valides",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "offres_validees",
+        "options": {}
+      },
+      "id": "aggregate-offers",
+      "name": "Agréger Offres",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Génération du rapport final avec données Excel\nconst offers = $json.offres_validees || [];\nconst timestamp = new Date().toISOString().slice(0,19).replace(/[:-]/g, '');\n\nconsole.log(`📊 Génération rapport final: ${offers.length} offres`);\n\n// Données Excel formatées\nconst excelData = offers.map((offer, index) => ({\n  'N°': index + 1,\n  'Titre': offer.title || 'N/A',\n  'Entreprise': offer.company || 'N/A',\n  'Localisation': offer.location || 'N/A',\n  'Durée': offer.duration || 'N/A',\n  'Début': offer.start_date || 'N/A',\n  'Site Source': offer.scraper_source || 'test',\n  'Lien': offer.url || 'N/A',\n  'Validation IA': offer.ai_response || 'VALIDE',\n  'Date Traitement': new Date(offer.processed_at).toLocaleDateString('fr-FR')\n}));\n\n// Statistiques\nconst stats = {\n  total_offres: offers.length,\n  sites_scrapes: [...new Set(offers.map(o => o.scraper_source))],\n  top_locations: Object.entries(\n    offers.reduce((acc, o) => {\n      const loc = (o.location || 'Paris').split('(')[0].trim();\n      acc[loc] = (acc[loc] || 0) + 1;\n      return acc;\n    }, {})\n  ).sort((a,b) => b[1] - a[1]),\n  rapport_filename: `rapport_alternance_cybersecurite_${timestamp}.xlsx`,\n  generation_date: new Date().toISOString(),\n  excel_data: excelData,\n  email_subject: `🎯 ${offers.length} Offres Alternance Cybersécurité - ${new Date().toLocaleDateString('fr-FR')}`,\n  email_summary: `✅ ${offers.length} offres validées par IA Mistral`\n};\n\nconsole.log('✅ Rapport finalisé:', stats.email_subject);\n\nreturn [{ json: stats }];"
+      },
+      "id": "generate-final-report",
+      "name": "Générer Rapport Final",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1560, 180]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@alternance-agent.local",
+        "toEmail": "bigmoletos@yopmail.com",
+        "subject": "={{ $json.email_subject }}",
+        "text": "=Bonjour,\n\nVeuillez trouver ci-dessous le rapport automatique des offres d'alternance en cybersécurité validées par l'IA Mistral.\n\n📊 RÉSUMÉ EXÉCUTIF\n{{ $json.email_summary }}\n🌐 Sites scrapés: {{ $json.sites_scrapes.join(', ') }}\n📅 Date génération: {{ new Date().toLocaleDateString('fr-FR') }} à {{ new Date().toLocaleTimeString('fr-FR') }}\n🤖 Moteur IA: Mistral Large\n\n🏆 TOP LOCALISATIONS\n{{ $json.top_locations.map(loc => `${loc[0]}: ${loc[1]} offre(s)`).join('\\n') }}\n\n📋 DÉTAIL DES OFFRES VALIDÉES\n\n{{ $json.excel_data.map(offer => `${offer['N°']}. ${offer.Titre}\\n   🏢 ${offer.Entreprise}\\n   📍 ${offer.Localisation}\\n   ⏱️ Durée: ${offer.Durée}\\n   🚀 Début: ${offer.Début}\\n   🔗 ${offer.Lien}\\n   ✅ Validation: ${offer['Validation IA']}\\n   📊 Source: ${offer['Site Source']}\\n`).join('\\n') }}\n\n---\n\n💡 PROCHAINES ÉTAPES\n1. Consultez les liens directs pour postuler\n2. Préparez votre CV et lettre de motivation\n3. Suivez les candidatures dans votre tableau de bord\n\n🔄 AUTOMATISATION\n- Prochaine exécution: demain 9h00\n- Fréquence: du lundi au vendredi\n- Filtrage IA: automatique via Mistral\n\n---\n🤖 Rapport généré automatiquement par l'Agent IA Alternance\n📧 En cas de problème: répondez à ce mail",
+        "options": {}
+      },
+      "id": "send-email-simple",
+      "name": "Email Rapport Complet",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1780, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log des rejets\nconst rejectedOffer = $json;\n\nconst logEntry = {\n  titre: rejectedOffer.title,\n  entreprise: rejectedOffer.company,\n  raison_rejet: rejectedOffer.ai_response,\n  date_rejet: new Date().toISOString()\n};\n\nconsole.log('❌ Offre rejetée:', JSON.stringify(logEntry, null, 2));\n\nreturn { json: logEntry };"
+      },
+      "id": "log-rejected",
+      "name": "Log Rejets",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 320]
+    }
+  ],
+  "connections": {
+    "Déclencheur Quotidien (9h)": {
+      "main": [
+        [
+          {
+            "node": "Scrapers Enrichis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrapers Enrichis": {
+      "main": [
+        [
+          {
+            "node": "Classification Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification Mistral": {
+      "main": [
+        [
+          {
+            "node": "Traitement Sécurisé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traitement Sécurisé": {
+      "main": [
+        [
+          {
+            "node": "Filtrer Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrer Valides": {
+      "main": [
+        [
+          {
+            "node": "Agréger Offres",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rejets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agréger Offres": {
+      "main": [
+        [
+          {
+            "node": "Générer Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer Rapport Final": {
+      "main": [
+        [
+          {
+            "node": "Email Rapport Complet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "final-email",
+      "name": "Final Email"
+    }
+  ],
+  "triggerCount": 1
+}

@@ -1,0 +1,327 @@
+{
+  "name": "Classification Mistral - Gestion Erreurs Complète",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-main",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GÉNÉRATEUR D'OFFRES TEST (identique au précédent)\nconst offresTest = [\n  {\n    id: 'test-valide-1',\n    title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n    company: 'Orange Cyberdefense',\n    description: 'Contrat d\\'apprentissage cybersécurité SOC.',\n    location: 'Paris, France',\n    contract_type: 'Contrat d\\'apprentissage',\n    keywords: ['apprentissage', 'cybersécurité'],\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'test-invalide-donnees-manquantes',\n    title: '', // Titre manquant\n    company: 'Test Company',\n    description: null, // Description nulle\n    location: 'Paris',\n    contract_type: 'Stage',\n    keywords: [],\n    attendu: 'ERREUR_DONNEES'\n  },\n  {\n    id: 'test-donnees-corrompues',\n    // Données mal structurées\n    invalid_field: 'test',\n    attendu: 'ERREUR_STRUCTURE'\n  }\n];\n\nreturn offresTest.map(offre => ({ json: offre }));"
+      },
+      "id": "generator-test",
+      "name": "🧪 Générateur Test",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// VALIDATION COMPLÈTE DES DONNÉES D'ENTRÉE\nconst offre = $input.item.json;\n\nconsole.log(`🔍 === VALIDATION DONNÉES: ${offre.id || 'ID_MANQUANT'} ===`);\n\n// Structure de validation\nconst validationResult = {\n  isValid: true,\n  errors: [],\n  warnings: [],\n  correctedData: { ...offre }\n};\n\n// 1. VALIDATION DES CHAMPS OBLIGATOIRES\nconst requiredFields = ['id', 'title', 'company', 'description', 'contract_type'];\n\nrequiredFields.forEach(field => {\n  if (!offre[field] || offre[field] === '' || offre[field] === null) {\n    validationResult.errors.push(`Champ obligatoire manquant: ${field}`);\n    validationResult.isValid = false;\n    \n    // Correction automatique si possible\n    if (field === 'id' && !offre.id) {\n      validationResult.correctedData.id = `auto-${Date.now()}`;\n      validationResult.warnings.push('ID généré automatiquement');\n    }\n    if (field === 'title' && !offre.title) {\n      validationResult.correctedData.title = 'Titre non spécifié';\n      validationResult.warnings.push('Titre par défaut assigné');\n    }\n    if (field === 'description' && (!offre.description || offre.description === null)) {\n      validationResult.correctedData.description = 'Description non disponible';\n      validationResult.warnings.push('Description par défaut assignée');\n    }\n  }\n});\n\n// 2. VALIDATION DES TYPES DE DONNÉES\nif (offre.keywords && !Array.isArray(offre.keywords)) {\n  validationResult.warnings.push('Keywords converti en array');\n  validationResult.correctedData.keywords = typeof offre.keywords === 'string' \n    ? offre.keywords.split(',').map(k => k.trim()) \n    : [];\n}\n\nif (!offre.keywords) {\n  validationResult.correctedData.keywords = [];\n  validationResult.warnings.push('Keywords initialisé comme array vide');\n}\n\n// 3. VALIDATION DE LA LONGUEUR DES CONTENUS\nif (offre.title && offre.title.length > 200) {\n  validationResult.warnings.push('Titre tronqué (>200 caractères)');\n  validationResult.correctedData.title = offre.title.substring(0, 200) + '...';\n}\n\nif (offre.description && offre.description.length > 5000) {\n  validationResult.warnings.push('Description tronquée (>5000 caractères)');\n  validationResult.correctedData.description = offre.description.substring(0, 5000) + '...';\n}\n\n// 4. VALIDATION DES VALEURS MÉTIER\nconst validContractTypes = [\n  'Contrat d\\'apprentissage', 'Contrat de professionnalisation', \n  'Alternance', 'Stage', 'CDI', 'CDD', 'Freelance'\n];\n\nif (offre.contract_type && !validContractTypes.includes(offre.contract_type)) {\n  validationResult.warnings.push(`Type de contrat non standard: ${offre.contract_type}`);\n}\n\n// RÉSULTATS DE VALIDATION\nconsole.log(`✅ Validation complète: ${validationResult.isValid}`);\nconsole.log(`❌ Erreurs (${validationResult.errors.length}):`, validationResult.errors);\nconsole.log(`⚠️  Warnings (${validationResult.warnings.length}):`, validationResult.warnings);\n\nreturn {\n  json: {\n    ...validationResult.correctedData,\n    validation: validationResult,\n    original_data: offre,\n    validation_timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "validation-node",
+      "name": "✅ Validation Données",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "condition-valid-data",
+              "leftValue": "={{ $json.validation.isValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "condition-valid",
+      "name": "Données Valides ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GESTION DES ERREURS DE VALIDATION\nconst data = $input.item.json;\n\nconsole.log(`❌ === GESTION ERREUR VALIDATION ===`);\nconsole.log('Erreurs:', data.validation.errors);\nconsole.log('Données originales:', data.original_data);\n\n// Log détaillé pour débogage\nconst errorReport = {\n  error_type: 'VALIDATION_FAILED',\n  error_timestamp: new Date().toISOString(),\n  input_data: data.original_data,\n  validation_errors: data.validation.errors,\n  validation_warnings: data.validation.warnings,\n  corrected_data: {\n    id: data.id,\n    title: data.title,\n    company: data.company,\n    description: data.description,\n    contract_type: data.contract_type\n  },\n  recovery_action: 'DATA_CORRECTION_ATTEMPTED'\n};\n\nconsole.log('📋 Rapport d\\'erreur complet:', JSON.stringify(errorReport, null, 2));\n\nreturn {\n  json: {\n    ...data,\n    error_report: errorReport,\n    status: 'ERREUR_VALIDATION',\n    can_retry: data.validation.warnings.length > 0 && data.validation.errors.length === 0\n  }\n};"
+      },
+      "id": "error-handler",
+      "name": "❌ Gestion Erreurs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PRÉPARATION SÉCURISÉE DU PROMPT MISTRAL\nconst offre = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION PROMPT SÉCURISÉE: ${offre.title} ===`);\n\n// Vérification finale avant appel API\nif (!offre.title || !offre.description || !offre.contract_type) {\n  throw new Error('Données insuffisantes pour préparer le prompt Mistral');\n}\n\n// Nettoyage et sécurisation des données\nconst cleanData = {\n  title: offre.title.replace(/[\"\\n\\r]/g, ' ').trim(),\n  company: (offre.company || 'Entreprise non spécifiée').replace(/[\"\\n\\r]/g, ' ').trim(),\n  description: offre.description.replace(/[\"\\n\\r]/g, ' ').trim(),\n  contract_type: offre.contract_type.trim(),\n  keywords: Array.isArray(offre.keywords) ? offre.keywords.join(', ') : ''\n};\n\nconst prompt = `Tu es un expert RH spécialisé en cybersécurité et contrats d'alternance.\n\n🎯 **MISSION**: Analyser si cette offre correspond EXACTEMENT à une ALTERNANCE en CYBERSÉCURITÉ.\n\n📋 **OFFRE À ANALYSER**:\n• **Titre**: ${cleanData.title}\n• **Entreprise**: ${cleanData.company}\n• **Description**: ${cleanData.description}\n• **Type de contrat**: ${cleanData.contract_type}\n• **Mots-clés**: ${cleanData.keywords}\n\n🔍 **CRITÈRES OBLIGATOIRES**:\n\n**1. TYPE DE CONTRAT (CRITIQUE)**:\n✅ ALTERNANCE: \"alternance\", \"apprentissage\", \"contrat pro\", \"contrat de professionnalisation\"\n❌ AUTRES: \"stage\", \"CDI\", \"CDD\", \"freelance\", \"mission\"\n\n**2. DOMAINE CYBERSÉCURITÉ (CRITIQUE)**:\n✅ CYBER: \"cybersécurité\", \"sécurité informatique\", \"sécurité des SI\"\n✅ SPÉCIALITÉS: \"SOC\", \"SIEM\", \"pentest\", \"audit sécurité\", \"GRC\", \"forensic\"\n❌ AUTRES: \"sécurité physique\", \"sécurité bâtiment\", \"surveillance\", \"marketing\"\n\n📝 **FORMAT DE RÉPONSE OBLIGATOIRE**:\n**CLASSIFICATION**: VALIDE ou INVALIDE\n**JUSTIFICATION**: [Explique en 1-2 phrases pourquoi]\n\nAnalyse maintenant cette offre.`;\n\n// Validation de la taille du prompt\nif (prompt.length > 10000) {\n  console.log('⚠️ Prompt très long, troncature appliquée');\n  prompt = prompt.substring(0, 9500) + '\\n\\n[...troncé...]\\n\\nAnalyse maintenant cette offre.';\n}\n\nconst payload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert RH avec 15 ans d'expérience en cybersécurité et alternance. Tu analyses les offres avec précision et rigueur.\"\n    },\n    {\n      role: \"user\",\n      content: prompt\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 300\n};\n\n// Validation finale du payload\nif (!payload.messages || payload.messages.length === 0) {\n  throw new Error('Payload Mistral invalide: messages vides');\n}\n\nif (!payload.model) {\n  throw new Error('Payload Mistral invalide: modèle non spécifié');\n}\n\nconsole.log('✅ Payload Mistral préparé et validé');\nconsole.log('📏 Taille prompt:', prompt.length, 'caractères');\nconsole.log('📋 Nombre de messages:', payload.messages.length);\n\nreturn {\n  json: {\n    ...offre,\n    mistral_payload: payload,\n    prompt_info: {\n      size: prompt.length,\n      cleaned_data: cleanData,\n      preparation_timestamp: new Date().toISOString()\n    }\n  }\n};"
+      },
+      "id": "prompt-prep",
+      "name": "📝 Préparation Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "{\n  \"model\": \"{{ $json.mistral_payload.model }}\",\n  \"messages\": {{ JSON.stringify($json.mistral_payload.messages) }},\n  \"temperature\": {{ $json.mistral_payload.temperature }},\n  \"max_tokens\": {{ $json.mistral_payload.max_tokens }}\n}",
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "enabled": true,
+            "maxRetries": 3,
+            "retryInterval": 1000
+          }
+        }
+      },
+      "id": "mistral-api-call",
+      "name": "🌐 Appel Mistral API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GESTION DES ERREURS API MISTRAL\nconst inputData = $input.first().json;\nconst error = $input.last().error;\n\nconsole.log(`❌ === ERREUR API MISTRAL ===`);\nconsole.log('Type d\\'erreur:', error?.name || 'Erreur inconnue');\nconsole.log('Message:', error?.message || 'Pas de message');\nconsole.log('Code HTTP:', error?.httpCode || 'N/A');\n\n// Analyse de l'erreur pour déterminer la stratégie\nlet errorType, canRetry, suggestedAction;\n\nif (error?.httpCode === 422) {\n  errorType = 'VALIDATION_API';\n  canRetry = true;\n  suggestedAction = 'Vérifier la structure du payload';\n} else if (error?.httpCode === 401) {\n  errorType = 'AUTHENTICATION';\n  canRetry = false;\n  suggestedAction = 'Vérifier la clé API';\n} else if (error?.httpCode === 429) {\n  errorType = 'RATE_LIMIT';\n  canRetry = true;\n  suggestedAction = 'Réessayer après délai';\n} else if (error?.httpCode >= 500) {\n  errorType = 'SERVER_ERROR';\n  canRetry = true;\n  suggestedAction = 'Problème serveur Mistral, réessayer';\n} else {\n  errorType = 'UNKNOWN';\n  canRetry = false;\n  suggestedAction = 'Analyser l\\'erreur manuellement';\n}\n\nconst errorReport = {\n  error_type: errorType,\n  error_timestamp: new Date().toISOString(),\n  http_code: error?.httpCode,\n  error_message: error?.message,\n  error_details: error?.details || {},\n  can_retry: canRetry,\n  suggested_action: suggestedAction,\n  input_data_id: inputData.id,\n  payload_info: inputData.prompt_info\n};\n\nconsole.log('📋 Rapport d\\'erreur API:', JSON.stringify(errorReport, null, 2));\n\nreturn {\n  json: {\n    ...inputData,\n    api_error: errorReport,\n    status: 'ERREUR_API',\n    mistral_response: null,\n    classification: 'ERREUR',\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "api-error-handler",
+      "name": "❌ Erreur API Mistral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE SÉCURISÉE DE LA RÉPONSE MISTRAL\nconst offre = $input.first().json;\nconst mistralResponse = $input.last().json;\n\nconsole.log(`📥 === ANALYSE RÉPONSE MISTRAL: ${offre.title} ===`);\n\n// Validation de la structure de réponse\nif (!mistralResponse || typeof mistralResponse !== 'object') {\n  throw new Error('Réponse Mistral invalide: pas un objet JSON');\n}\n\nif (!mistralResponse.choices || !Array.isArray(mistralResponse.choices)) {\n  throw new Error('Réponse Mistral invalide: pas de choix disponibles');\n}\n\nif (mistralResponse.choices.length === 0) {\n  throw new Error('Réponse Mistral invalide: aucun choix retourné');\n}\n\nif (!mistralResponse.choices[0].message || !mistralResponse.choices[0].message.content) {\n  throw new Error('Réponse Mistral invalide: contenu du message manquant');\n}\n\nconst content = mistralResponse.choices[0].message.content.trim();\nconsole.log('📝 Réponse Mistral complète:', content);\n\n// Classification avec validation robuste\nconst contentUpper = content.toUpperCase();\nlet classification, isValid, confidence, reasoning;\n\n// Patterns de classification plus robustes\nconst patterns = {\n  valide: [\n    /\\*\\*CLASSIFICATION\\*\\*:\\s*VALIDE/i,\n    /CLASSIFICATION:\\s*VALIDE/i,\n    /RÉPONSE:\\s*VALIDE/i,\n    /RÉSULTAT:\\s*VALIDE/i\n  ],\n  invalide: [\n    /\\*\\*CLASSIFICATION\\*\\*:\\s*INVALIDE/i,\n    /CLASSIFICATION:\\s*INVALIDE/i,\n    /RÉPONSE:\\s*INVALIDE/i,\n    /RÉSULTAT:\\s*INVALIDE/i\n  ]\n};\n\n// Extraction de la justification\nconst justificationMatch = content.match(/\\*\\*JUSTIFICATION\\*\\*:\\s*(.+?)(?:\\n|$)/i) ||\n                          content.match(/JUSTIFICATION:\\s*(.+?)(?:\\n|$)/i);\nreasoning = justificationMatch ? justificationMatch[1].trim() : 'Justification non trouvée';\n\n// Logique de classification\nconst hasValidePattern = patterns.valide.some(pattern => pattern.test(content));\nconst hasInvalidePattern = patterns.invalide.some(pattern => pattern.test(content));\n\nif (hasValidePattern && !hasInvalidePattern) {\n  classification = 'VALIDE';\n  isValid = true;\n  confidence = 0.95;\n} else if (hasInvalidePattern && !hasValidePattern) {\n  classification = 'INVALIDE';\n  isValid = false;\n  confidence = 0.95;\n} else if (contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE')) {\n  classification = 'VALIDE';\n  isValid = true;\n  confidence = 0.8;\n} else if (contentUpper.includes('INVALIDE')) {\n  classification = 'INVALIDE';\n  isValid = false;\n  confidence = 0.8;\n} else {\n  classification = 'INCERTAIN';\n  isValid = false;\n  confidence = 0.3;\n  reasoning = 'Format de réponse non conforme aux attentes';\n}\n\n// Validation avec résultat attendu\nconst isCorrect = offre.attendu ? classification === offre.attendu : null;\n\nconsole.log(`🎯 Classification: ${classification}`);\nconsole.log(`🎯 Attendu: ${offre.attendu || 'N/A'}`);\nconsole.log(`✅ Correct: ${isCorrect}`);\nconsole.log(`🔍 Confiance: ${confidence}`);\n\nreturn {\n  json: {\n    ...offre,\n    mistral_response: content,\n    classification: classification,\n    is_valid: isValid,\n    confidence: confidence,\n    reasoning: reasoning,\n    model_used: mistralResponse.model || 'mistral-large-latest',\n    usage: mistralResponse.usage || {},\n    processed_at: new Date().toISOString(),\n    classification_correct: isCorrect,\n    status: 'SUCCESS',\n    response_analysis: {\n      hasValidePattern,\n      hasInvalidePattern,\n      content_length: content.length,\n      patterns_detected: {\n        valide: patterns.valide.filter(p => p.test(content)).length,\n        invalide: patterns.invalide.filter(p => p.test(content)).length\n      }\n    }\n  }\n};"
+      },
+      "id": "response-analyzer",
+      "name": "🔍 Analyse Réponse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GESTIONNAIRE D'ERREUR GLOBAL POUR L'ANALYSE\nconst inputData = $input.first().json;\nconst error = $input.last().error;\n\nconsole.log(`❌ === ERREUR ANALYSE RÉPONSE ===`);\nconsole.log('Erreur:', error?.message || 'Erreur inconnue');\n\nconst errorReport = {\n  error_type: 'RESPONSE_ANALYSIS_ERROR',\n  error_timestamp: new Date().toISOString(),\n  error_message: error?.message,\n  input_data_id: inputData.id,\n  recovery_action: 'CLASSIFICATION_MANUELLE_REQUISE'\n};\n\nreturn {\n  json: {\n    ...inputData,\n    analysis_error: errorReport,\n    status: 'ERREUR_ANALYSE',\n    classification: 'ERREUR',\n    is_valid: false,\n    confidence: 0,\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "analysis-error-handler",
+      "name": "❌ Erreur Analyse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 500]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "final-result",
+              "name": "final_result",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "✅ Traitement terminé - ID: {{ $json.id }}, Status: {{ $json.status }}, Classification: {{ $json.classification }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "final-output",
+      "name": "📊 Résultat Final",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2000, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🧪 Générateur Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧪 Générateur Test": {
+      "main": [
+        [
+          {
+            "node": "✅ Validation Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Validation Données": {
+      "main": [
+        [
+          {
+            "node": "Données Valides ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Données Valides ?": {
+      "main": [
+        [
+          {
+            "node": "📝 Préparation Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Gestion Erreurs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Gestion Erreurs": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Préparation Prompt": {
+      "main": [
+        [
+          {
+            "node": "🌐 Appel Mistral API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Appel Mistral API": {
+      "main": [
+        [
+          {
+            "node": "🔍 Analyse Réponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Erreur API Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Erreur API Mistral": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Analyse Réponse": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Erreur Analyse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Erreur Analyse": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": {
+      "enabled": false
+    }
+  },
+  "versionId": "workflow-gestion-erreurs-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-gestion-erreurs-complete",
+  "tags": []
+}

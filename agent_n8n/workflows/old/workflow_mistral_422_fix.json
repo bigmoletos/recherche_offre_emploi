@@ -1,0 +1,183 @@
+{
+  "name": "Fix Erreur 422 Mistral API",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-fix-422",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CRÉATION D'UN PAYLOAD MISTRAL EXPLICITE ET VALIDÉ\nconsole.log('🔧 === CRÉATION PAYLOAD MISTRAL SÉCURISÉ ===');\n\n// Données de test simples pour diagnostiquer l'erreur 422\nconst testData = {\n  id: 'test-422-fix',\n  title: 'Contrat apprentissage - Analyste Cybersécurité',\n  company: 'Test Company',\n  description: 'Poste en cybersécurité pour alternance.',\n  contract_type: 'Apprentissage'\n};\n\n// Construction explicite du payload selon les spécifications Mistral\nconst mistralPayload = {\n  \"model\": \"mistral-large-latest\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Tu es un expert RH spécialisé en cybersécurité.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": `Analyse cette offre: ${testData.title}. Type: ${testData.contract_type}. Réponds par VALIDE ou INVALIDE.`\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 200\n};\n\n// Validation stricte du payload\nfunction validateMistralPayload(payload) {\n  const errors = [];\n  \n  // Vérification du modèle\n  if (!payload.model || typeof payload.model !== 'string') {\n    errors.push('Model manquant ou invalide');\n  }\n  \n  // Vérification des messages\n  if (!payload.messages) {\n    errors.push('Messages manquants');\n  } else if (!Array.isArray(payload.messages)) {\n    errors.push('Messages doit être un array');\n  } else if (payload.messages.length === 0) {\n    errors.push('Au moins un message requis');\n  } else {\n    payload.messages.forEach((msg, index) => {\n      if (!msg.role || typeof msg.role !== 'string') {\n        errors.push(`Message ${index}: role manquant/invalide`);\n      }\n      if (!msg.content || typeof msg.content !== 'string') {\n        errors.push(`Message ${index}: content manquant/invalide`);\n      }\n      if (!['system', 'user', 'assistant'].includes(msg.role)) {\n        errors.push(`Message ${index}: role invalide (${msg.role})`);\n      }\n    });\n  }\n  \n  // Vérification des paramètres optionnels\n  if (payload.temperature !== undefined) {\n    if (typeof payload.temperature !== 'number' || payload.temperature < 0 || payload.temperature > 2) {\n      errors.push('Temperature doit être un nombre entre 0 et 2');\n    }\n  }\n  \n  if (payload.max_tokens !== undefined) {\n    if (!Number.isInteger(payload.max_tokens) || payload.max_tokens < 1) {\n      errors.push('Max_tokens doit être un entier positif');\n    }\n  }\n  \n  return {\n    isValid: errors.length === 0,\n    errors,\n    payload\n  };\n}\n\nconst validation = validateMistralPayload(mistralPayload);\n\nconsole.log('✅ Validation payload:', validation.isValid);\nif (!validation.isValid) {\n  console.log('❌ Erreurs de validation:', validation.errors);\n  throw new Error(`Payload invalide: ${validation.errors.join(', ')}`);\n}\n\nconsole.log('📋 Payload Mistral final:', JSON.stringify(mistralPayload, null, 2));\nconsole.log('📏 Taille JSON:', JSON.stringify(mistralPayload).length, 'caractères');\n\nreturn {\n  json: {\n    test_data: testData,\n    mistral_payload: mistralPayload,\n    validation_result: validation,\n    payload_json_string: JSON.stringify(mistralPayload),\n    created_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "payload-builder",
+      "name": "🔧 Construction Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.payload_json_string }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mistral-api-test",
+      "name": "🌐 Test API Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE DU SUCCÈS DE L'APPEL API\nconst requestData = $input.first().json;\nconst apiResponse = $input.last().json;\n\nconsole.log('✅ === SUCCÈS API MISTRAL ===');\nconsole.log('📥 Status: Réponse reçue avec succès');\nconsole.log('🔑 Request ID:', requestData.test_data.id);\n\n// Validation de la structure de réponse\nif (!apiResponse || !apiResponse.choices || apiResponse.choices.length === 0) {\n  console.log('⚠️ Structure de réponse inattendue');\n  return {\n    json: {\n      ...requestData,\n      api_response: apiResponse,\n      status: 'SUCCESS_BUT_UNEXPECTED_STRUCTURE',\n      analysis: 'Réponse reçue mais structure non standard'\n    }\n  };\n}\n\nconst messageContent = apiResponse.choices[0].message?.content || 'Pas de contenu';\n\nconsole.log('📝 Réponse Mistral:', messageContent.substring(0, 100) + '...');\nconsole.log('🔧 Modèle utilisé:', apiResponse.model);\nconsole.log('📊 Usage tokens:', JSON.stringify(apiResponse.usage || {}));\n\n// Analyse de la classification\nlet classification = 'INDÉTERMINÉ';\nif (messageContent.toUpperCase().includes('VALIDE')) {\n  classification = 'VALIDE';\n} else if (messageContent.toUpperCase().includes('INVALIDE')) {\n  classification = 'INVALIDE';\n}\n\nreturn {\n  json: {\n    ...requestData,\n    api_response: apiResponse,\n    status: 'SUCCESS',\n    classification: classification,\n    message_content: messageContent,\n    model_used: apiResponse.model,\n    usage: apiResponse.usage,\n    processed_at: new Date().toISOString(),\n    success_analysis: {\n      payload_was_valid: true,\n      api_responded: true,\n      classification_extracted: classification !== 'INDÉTERMINÉ',\n      error_422_resolved: true\n    }\n  }\n};"
+      },
+      "id": "success-handler",
+      "name": "✅ Succès API",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE DÉTAILLÉE DE L'ERREUR 422\nconst requestData = $input.first().json;\nconst errorData = $input.last();\n\nconsole.log('❌ === ANALYSE ERREUR 422 MISTRAL ===');\nconsole.log('🔍 Erreur complète:', JSON.stringify(errorData, null, 2));\n\n// Extraction des détails d'erreur\nconst errorDetails = {\n  http_code: errorData.httpCode || 'N/A',\n  error_message: errorData.message || 'Pas de message',\n  error_name: errorData.name || 'Erreur inconnue',\n  error_details: errorData.details || {},\n  timestamp: new Date().toISOString()\n};\n\n// Analyse spécifique de l'erreur 422\nlet rootCause = 'UNKNOWN';\nlet suggestedFix = 'Analyser manuellement';\nlet canRetry = false;\n\nif (errorDetails.http_code === 422) {\n  console.log('🎯 Erreur 422 confirmée - Analyse des causes...');\n  \n  const errorText = errorDetails.error_message.toLowerCase();\n  \n  if (errorText.includes('messages') && errorText.includes('required')) {\n    rootCause = 'MISSING_MESSAGES_FIELD';\n    suggestedFix = 'Le champ messages est manquant dans le payload';\n  } else if (errorText.includes('model') && errorText.includes('required')) {\n    rootCause = 'MISSING_MODEL_FIELD';\n    suggestedFix = 'Le champ model est manquant dans le payload';\n  } else if (errorText.includes('invalid') && errorText.includes('format')) {\n    rootCause = 'INVALID_FORMAT';\n    suggestedFix = 'Format JSON du payload invalide';\n  } else if (errorText.includes('field required')) {\n    rootCause = 'REQUIRED_FIELD_MISSING';\n    suggestedFix = 'Un champ obligatoire est manquant';\n  }\n  \n  canRetry = rootCause !== 'UNKNOWN';\n}\n\n// Debug du payload envoyé\nconsole.log('📋 Payload envoyé:', requestData.payload_json_string);\nconsole.log('🔍 Validation pré-envoi:', JSON.stringify(requestData.validation_result, null, 2));\n\n// Analyse comparative\nconst diagnostics = {\n  payload_size: requestData.payload_json_string.length,\n  payload_valid_json: isValidJSON(requestData.payload_json_string),\n  has_model_field: requestData.payload_json_string.includes('\"model\"'),\n  has_messages_field: requestData.payload_json_string.includes('\"messages\"'),\n  messages_is_array: requestData.payload_json_string.includes('\"messages\":['),\n  request_headers_correct: true // On assume que les headers sont corrects\n};\n\nfunction isValidJSON(str) {\n  try {\n    JSON.parse(str);\n    return true;\n  } catch (e) {\n    return false;\n  }\n}\n\nconsole.log('🔬 Diagnostics:', JSON.stringify(diagnostics, null, 2));\n\n// Génération du rapport d'erreur complet\nconst errorReport = {\n  error_type: 'API_422_ERROR',\n  root_cause: rootCause,\n  suggested_fix: suggestedFix,\n  can_retry: canRetry,\n  error_details: errorDetails,\n  diagnostics: diagnostics,\n  original_payload: requestData.mistral_payload,\n  payload_string: requestData.payload_json_string,\n  investigation_steps: [\n    '1. Vérifier que le payload contient le champ messages',\n    '2. Vérifier que messages est un array',\n    '3. Vérifier que chaque message a role et content',\n    '4. Vérifier que le JSON est valide',\n    '5. Vérifier les headers HTTP'\n  ]\n};\n\nreturn {\n  json: {\n    ...requestData,\n    status: 'ERROR_422',\n    error_report: errorReport,\n    next_actions: canRetry ? ['RETRY_WITH_CORRECTED_PAYLOAD'] : ['MANUAL_INVESTIGATION']\n  }\n};\n\nfunction isValidJSON(str) {\n  try {\n    JSON.parse(str);\n    return true;\n  } catch (e) {\n    return false;\n  }\n}"
+      },
+      "id": "error-422-analyzer",
+      "name": "🔍 Analyse Erreur 422",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result-assignment",
+              "name": "final_result",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "status-assignment",
+              "name": "execution_status",
+              "value": "Exécution terminée - Status: {{ $json.status }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "final-result",
+      "name": "📊 Résultat Final",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🔧 Construction Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔧 Construction Payload": {
+      "main": [
+        [
+          {
+            "node": "🌐 Test API Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Test API Mistral": {
+      "main": [
+        [
+          {
+            "node": "✅ Succès API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "🔍 Analyse Erreur 422",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Succès API": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Analyse Erreur 422": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "fix-422-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-fix-422-mistral",
+  "tags": ["debug", "mistral", "api", "422"]
+}

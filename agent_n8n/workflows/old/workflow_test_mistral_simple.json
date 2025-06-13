@@ -1,0 +1,118 @@
+{
+  "name": "🧪 Test Mistral Simple",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-test",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [0, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TEST SIMPLE MISTRAL\nconsole.log('🧪 === TEST API MISTRAL ===');\n\nconst testData = {\n  title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC H/F',\n  company: 'ANSSI - Agence Nationale Sécurité',\n  contract_type: 'Contrat d\\'apprentissage',\n  description: 'Formation alternance 24 mois - Analyste SOC junior. Surveillance systèmes, analyse incidents sécurité.'\n};\n\n// Payload Mistral minimal\nconst mistralPayload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: `Analyse cette offre et réponds par VALIDE ou INVALIDE:\\n\\nTitre: ${testData.title}\\nEntreprise: ${testData.company}\\nContrat: ${testData.contract_type}\\nDescription: ${testData.description}\\n\\nEst-ce une vraie alternance en cybersécurité ? Réponds juste VALIDE ou INVALIDE.`\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 50\n};\n\nconsole.log('📋 Test payload créé');\nconsole.log('🎯 Titre test:', testData.title);\n\nreturn {\n  json: {\n    test_data: testData,\n    mistral_payload: JSON.stringify(mistralPayload),\n    test_status: 'READY_FOR_MISTRAL_TEST'\n  }\n};"
+      },
+      "id": "prepare-test",
+      "name": "Préparer Test",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.mistral_payload }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "api-test",
+      "name": "Test API Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 100],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// RÉSULTAT TEST MISTRAL\nconst testData = $('Préparer Test').item.json;\nconst response = $input.item.json;\n\nconsole.log('🧪 === RÉSULTAT TEST MISTRAL ===');\n\nif (response.choices && response.choices[0] && response.choices[0].message) {\n  const content = response.choices[0].message.content.trim();\n  console.log('✅ API Mistral fonctionne !');\n  console.log('📝 Réponse:', content);\n  \n  return {\n    json: {\n      api_status: 'SUCCESS',\n      mistral_response: content,\n      test_title: testData.test_data.title,\n      tokens_used: response.usage,\n      message: 'API Mistral opérationnelle'\n    }\n  };\n} else {\n  console.log('❌ Réponse API malformée');\n  console.log('🔍 Réponse reçue:', JSON.stringify(response, null, 2));\n  \n  return {\n    json: {\n      api_status: 'ERROR_RESPONSE',\n      error_details: response,\n      test_title: testData.test_data.title,\n      message: 'API répond mais format incorrect'\n    }\n  };\n}"
+      },
+      "id": "process-success",
+      "name": "Traiter Succès",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ERREUR TEST MISTRAL\nconst testData = $('Préparer Test').item.json;\nconst error = $input.item;\n\nconsole.log('❌ === ERREUR TEST MISTRAL ===');\nconsole.log('🔍 Code erreur:', error.httpCode);\nconsole.log('📋 Message:', error.message);\nconsole.log('🔗 URL testée:', error.url || 'https://api.mistral.ai/v1/chat/completions');\n\nlet diagnostic = 'Erreur inconnue';\nlet suggestion = 'Vérifier la configuration';\n\nswitch(error.httpCode) {\n  case 401:\n    diagnostic = 'Clé API invalide ou expirée';\n    suggestion = 'Vérifier la clé API Mistral';\n    break;\n  case 422:\n    diagnostic = 'Format de requête incorrect';\n    suggestion = 'Vérifier le format JSON du payload';\n    break;\n  case 429:\n    diagnostic = 'Limite de débit dépassée';\n    suggestion = 'Attendre et réessayer';\n    break;\n  case 500:\n  case 502:\n  case 503:\n    diagnostic = 'Problème serveur Mistral';\n    suggestion = 'Réessayer plus tard';\n    break;\n  case undefined:\n    diagnostic = 'Problème réseau ou timeout';\n    suggestion = 'Vérifier la connexion internet';\n    break;\n}\n\nconsole.log('🏷️ Diagnostic:', diagnostic);\nconsole.log('💡 Suggestion:', suggestion);\n\nreturn {\n  json: {\n    api_status: 'ERROR',\n    error_code: error.httpCode,\n    error_message: error.message,\n    diagnostic: diagnostic,\n    suggestion: suggestion,\n    test_title: testData.test_data.title,\n    message: `Test API échoué: ${diagnostic}`\n  }\n};"
+      },
+      "id": "process-error",
+      "name": "Traiter Erreur",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 200]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Préparer Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer Test": {
+      "main": [
+        [
+          {
+            "node": "Test API Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Mistral": {
+      "main": [
+        [
+          {
+            "node": "Traiter Succès",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Traiter Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "tags": ["test", "mistral", "api"]
+}

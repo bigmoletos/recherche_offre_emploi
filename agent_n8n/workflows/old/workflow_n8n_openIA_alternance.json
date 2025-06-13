@@ -1,0 +1,454 @@
+{
+  "name": "Agent Alternance Cybersécurité",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-daily",
+      "name": "Déclencheur Quotidien (9h)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "search_keywords",
+              "value": "alternance cybersécurité,apprentissage cyber,alternant sécurité informatique,alternance réseaux,apprenti administrateur réseau"
+            },
+            {
+              "name": "target_level",
+              "value": "Master 1"
+            },
+            {
+              "name": "start_date",
+              "value": "septembre 2025"
+            },
+            {
+              "name": "contract_duration",
+              "value": "12-24 mois"
+            }
+          ]
+        }
+      },
+      "id": "set-search-params",
+      "name": "Configuration Recherche",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        460,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Script de lancement des scrapers Python\nconst { execSync } = require('child_process');\nconst fs = require('fs');\n\nconst scrapers = [\n  'pole_emploi',\n  'indeed', \n  'apec',\n  'labonnealternance',\n  'walt',\n  'bloom_alternance'\n];\n\nconst keywords = $json.search_keywords.split(',');\nconst results = [];\n\nfor (const scraper of scrapers) {\n  try {\n    console.log(`Lancement scraper: ${scraper}`);\n    \n    // Commande Python avec paramètres\n    const cmd = `python /app/scrapers/${scraper}_scraper.py --keywords=\"${keywords.join(' ')}\" --level=\"${$json.target_level}\" --start-date=\"${$json.start_date}\"`;\n    \n    const output = execSync(cmd, { \n      encoding: 'utf8',\n      timeout: 300000, // 5 minutes max par scraper\n      maxBuffer: 10 * 1024 * 1024 // 10MB buffer\n    });\n    \n    const offers = JSON.parse(output);\n    \n    for (const offer of offers) {\n      offer.scraper_source = scraper;\n      offer.scraped_at = new Date().toISOString();\n      results.push(offer);\n    }\n    \n    console.log(`${scraper}: ${offers.length} offres trouvées`);\n    \n  } catch (error) {\n    console.error(`Erreur scraper ${scraper}:`, error.message);\n    // Continue avec le scraper suivant\n  }\n}\n\nconsole.log(`Total offres récupérées: ${results.length}`);\n\n// Retourne chaque offre comme un item séparé\nreturn results.map(offer => ({ json: offer }));"
+      },
+      "id": "python-scrapers",
+      "name": "Scrapers Python Multi-Sites",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        680,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "temperature": 0.1,
+        "maxTokens": 500,
+        "systemPrompt": "Tu es un expert en filtrage d'offres d'emploi. Ton rôle est de déterminer si une offre est :\n\n1. ✅ VALIDE : Une vraie offre d'emploi en alternance (apprentissage/professionnalisation) dans le domaine cybersécurité/réseaux\n2. ❌ INVALIDE : Une formation, école, cursus, stage court ou domaine non compatible\n\nCritères EXCLUSION :\n- Formations proposées par des écoles/universités\n- Cursus académiques ou diplômants\n- Stages < 12 mois ou non rémunérés\n- Domaines non techniques (marketing, RH, etc.)\n- Conseils d'orientation\n\nCritères INCLUSION :\n- Poste en entreprise avec contrat alternance\n- Durée 12-24 mois minimum\n- Niveau Master 1 compatible\n- Domaine : cybersécurité, réseaux, télécoms, infosec\n- Date début : septembre 2025 ou compatible\n\nRéponds UNIQUEMENT par :\n- \"VALIDE\" si l'offre répond aux critères\n- \"INVALIDE: [raison courte]\" si elle ne convient pas",
+        "userPrompt": "Analyse cette offre d'emploi :\n\nTitre: {{ $json.title }}\nEntreprise: {{ $json.company }}\nLocalisation: {{ $json.location }}\nDurée: {{ $json.duration }}\nDate début: {{ $json.start_date }}\nDescription: {{ $json.description }}\nURL: {{ $json.url }}\n\nEst-ce une offre valide selon les critères ?"
+      },
+      "id": "ai-classifier",
+      "name": "Classification IA (GPT-4)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        900,
+        240
+      ],
+      "credentials": {
+        "openAiApi": {
+          "name": "OpenAI API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.output }}",
+              "operation": "startsWith",
+              "value2": "VALIDE"
+            }
+          ]
+        }
+      },
+      "id": "filter-valid-offers",
+      "name": "Filtrer Offres Valides",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "site",
+              "value": "={{ $json.scraper_source }}"
+            },
+            {
+              "name": "titre",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "entreprise",
+              "value": "={{ $json.company }}"
+            },
+            {
+              "name": "localisation",
+              "value": "={{ $json.location }}"
+            },
+            {
+              "name": "duree",
+              "value": "={{ $json.duration }}"
+            },
+            {
+              "name": "date_debut",
+              "value": "={{ $json.start_date }}"
+            },
+            {
+              "name": "lien_direct",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "validation_ia",
+              "value": "✅ Validée par IA"
+            }
+          ],
+          "dateTime": [
+            {
+              "name": "date_scraping",
+              "value": "={{ $json.scraped_at }}"
+            }
+          ]
+        }
+      },
+      "id": "format-valid-offers",
+      "name": "Formater Offres Validées",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1340,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "offres_validees",
+        "options": {}
+      },
+      "id": "aggregate-offers",
+      "name": "Agréger Toutes les Offres",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Génération du rapport Excel avec openpyxl Python\nconst { execSync } = require('child_process');\nconst fs = require('fs');\nconst path = require('path');\n\nconst offers = $json.offres_validees;\nconst timestamp = new Date().toISOString().slice(0,19).replace(/[:-]/g, '');\nconst filename = `rapport_alternance_cybersecurite_${timestamp}.xlsx`;\nconst outputPath = `/app/outputs/${filename}`;\n\n// Créer fichier JSON temporaire avec les données\nconst tempDataFile = `/tmp/offers_${timestamp}.json`;\nfs.writeFileSync(tempDataFile, JSON.stringify(offers, null, 2));\n\ntry {\n  // Commande Python pour génération Excel\n  const cmd = `python /app/excel_generator/create_report.py --input=\"${tempDataFile}\" --output=\"${outputPath}\" --template=\"cybersecurity\"`;\n  \n  const result = execSync(cmd, {\n    encoding: 'utf8',\n    timeout: 60000\n  });\n  \n  console.log('Rapport Excel généré:', result);\n  \n  // Statistiques\n  const stats = {\n    total_offres: offers.length,\n    sites_scrapes: [...new Set(offers.map(o => o.site))],\n    top_locations: Object.entries(\n      offers.reduce((acc, o) => {\n        const loc = o.localisation.split('(')[0].trim();\n        acc[loc] = (acc[loc] || 0) + 1;\n        return acc;\n      }, {})\n    ).sort((a,b) => b[1] - a[1]).slice(0,5),\n    rapport_path: outputPath,\n    generation_date: new Date().toISOString()\n  };\n  \n  // Nettoyage\n  fs.unlinkSync(tempDataFile);\n  \n  return [{ json: stats }];\n  \n} catch (error) {\n  console.error('Erreur génération rapport:', error.message);\n  throw error;\n}"
+      },
+      "id": "generate-excel-report",
+      "name": "Générer Rapport Excel",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "#alternance-bot",
+        "text": "🎯 **Nouveau rapport d'offres d'alternance cybersécurité** 🎯\\n\\n📊 **Statistiques:**\\n• Total offres validées: {{ $json.total_offres }}\\n• Sites scrapés: {{ $json.sites_scrapes.join(', ') }}\\n• Top localisations: {{ $json.top_locations.map(l => l[0] + ' (' + l[1] + ')').join(', ') }}\\n\\n📄 **Rapport Excel:** `{{ $json.rapport_path.split('/').pop() }}`\\n🕐 **Généré le:** {{ $json.generation_date.slice(0,19).replace('T', ' à ') }}\\n\\n✅ Rapport prêt pour consultation !",
+        "attachments": [],
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "slack-notification",
+      "name": "Notification Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        180
+      ],
+      "credentials": {
+        "slackApi": {
+          "name": "Slack Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "francois@yopmail.com",
+        "subject": "🎯 Nouveau rapport offres alternance cybersécurité - {{ $now.toFormat('dd/MM/yyyy') }}",
+        "message": "Bonjour,\\n\\nUn nouveau rapport d'offres d'alternance en cybersécurité vient d'être généré.\\n\\n📊 **Résumé:**\\n• Total offres validées: {{ $json.total_offres }}\\n• Sites analysés: {{ $json.sites_scrapes.length }}\\n• Rapport Excel: {{ $json.rapport_path.split('/').pop() }}\\n\\n🔍 **Top localisations:**\\n{{ $json.top_locations.map(l => '• ' + l[0] + ': ' + l[1] + ' offres').join('\\n') }}\\n\\n📄 Le rapport Excel est disponible en pièce jointe ou sur le serveur.\\n\\nCordialement,\\nAgent IA Alternance",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "email-notification",
+      "name": "Notification Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        360
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "SMTP Email"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log détaillé des offres rejetées pour monitoring\nconst rejectedOffer = {\n  site: $json.scraper_source,\n  title: $json.title,\n  company: $json.company,\n  rejection_reason: $json.output,\n  rejected_at: new Date().toISOString(),\n  url: $json.url\n};\n\nconsole.log('❌ Offre rejetée:', JSON.stringify(rejectedOffer, null, 2));\n\n// Optionnel: stocker en base pour analyse\nreturn [{ json: rejectedOffer }];"
+      },
+      "id": "log-rejected-offers",
+      "name": "Logger Offres Rejetées",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "webhook",
+        "webhookId": "alternance-manual-trigger"
+      },
+      "id": "manual-webhook-trigger",
+      "name": "Déclencheur Manuel (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "insert",
+        "tableId": "alternance_offers",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "site",
+              "fieldValue": "={{ $json.site }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.titre }}"
+            },
+            {
+              "fieldId": "company",
+              "fieldValue": "={{ $json.entreprise }}"
+            },
+            {
+              "fieldId": "location",
+              "fieldValue": "={{ $json.localisation }}"
+            },
+            {
+              "fieldId": "url",
+              "fieldValue": "={{ $json.lien_direct }}"
+            },
+            {
+              "fieldId": "validation_status",
+              "fieldValue": "validated"
+            }
+          ]
+        }
+      },
+      "id": "save-to-database",
+      "name": "Sauvegarder en Base (Optionnel)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        360
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "name": "Supabase Database"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Déclencheur Quotidien (9h)": {
+      "main": [
+        [
+          {
+            "node": "Configuration Recherche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration Recherche": {
+      "main": [
+        [
+          {
+            "node": "Scrapers Python Multi-Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrapers Python Multi-Sites": {
+      "main": [
+        [
+          {
+            "node": "Classification IA (GPT-4)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification IA (GPT-4)": {
+      "main": [
+        [
+          {
+            "node": "Filtrer Offres Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrer Offres Valides": {
+      "main": [
+        [
+          {
+            "node": "Formater Offres Validées",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Logger Offres Rejetées",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formater Offres Validées": {
+      "main": [
+        [
+          {
+            "node": "Agréger Toutes les Offres",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sauvegarder en Base (Optionnel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agréger Toutes les Offres": {
+      "main": [
+        [
+          {
+            "node": "Générer Rapport Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer Rapport Excel": {
+      "main": [
+        [
+          {
+            "node": "Notification Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notification Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Déclencheur Manuel (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Configuration Recherche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "alternance-automation",
+      "name": "Alternance Automation"
+    },
+    {
+      "id": "cybersecurity",
+      "name": "Cybersécurité"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T00:00:00.000Z",
+  "versionId": "1.0.0"
+}

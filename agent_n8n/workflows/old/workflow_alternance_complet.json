@@ -1,0 +1,305 @@
+{
+  "name": "🔍 Recherche Alternance Cybersécurité - Complet",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-node-001",
+      "name": "🚀 Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [120, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "search-terms-id",
+              "name": "recherche",
+              "value": "alternance cybersécurité",
+              "type": "string"
+            },
+            {
+              "id": "location-id",
+              "name": "localisation",
+              "value": "France",
+              "type": "string"
+            },
+            {
+              "id": "sites-id",
+              "name": "sites",
+              "value": "[\n  \"https://www.apec.fr/candidat/recherche-emploi.html/emploi?motsCles=alternance%20cybersécurité\",\n  \"https://fr.indeed.com/jobs?q=alternance+cybersécurité\",\n  \"https://labonnealternance.pole-emploi.fr/recherche-apprentissage?&job=cybersécurité\",\n  \"https://www.francetravail.fr/candidat/rechercheoffres/resultats/recherche?offresPartenaires=true&range=0-19&sort=0&nature=1&q=alternance%20cybersécurité\",\n  \"https://walt.community/jobs?search=cybersécurité%20alternance\",\n  \"https://www.bloom-alternance.fr/recherche?q=cybersécurité\"\n]",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config-node-002",
+      "name": "⚙️ Configuration Recherche",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// SCRAPER MULTI-SITES POUR ALTERNANCES CYBERSÉCURITÉ\n\nconst config = $input.item.json;\nconst sites = JSON.parse(config.sites);\n\nconsole.log('🔍 === DÉBUT SCRAPING MULTI-SITES ===');\nconsole.log('📝 Recherche:', config.recherche);\nconsole.log('📍 Localisation:', config.localisation);\nconsole.log('🌐 Sites à scraper:', sites.length);\n\nconst offresCollectees = [];\n\n// Fonction de scraping pour chaque site\nasync function scraperSite(url, siteName) {\n  try {\n    console.log(`🌐 Scraping ${siteName}: ${url}`);\n    \n    const response = await fetch(url, {\n      headers: {\n        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',\n        'Accept-Language': 'fr-FR,fr;q=0.5',\n        'Accept-Encoding': 'gzip, deflate',\n        'Connection': 'keep-alive',\n        'Upgrade-Insecure-Requests': '1'\n      }\n    });\n\n    if (!response.ok) {\n      console.log(`❌ Erreur ${siteName}: HTTP ${response.status}`);\n      return [];\n    }\n\n    const html = await response.text();\n    console.log(`📄 HTML reçu de ${siteName}: ${html.length} caractères`);\n    \n    // Simulation d'extraction (à adapter selon chaque site)\n    const offres = extraireOffres(html, siteName, url);\n    console.log(`✅ ${siteName}: ${offres.length} offres trouvées`);\n    \n    return offres;\n    \n  } catch (error) {\n    console.log(`🚨 Erreur scraping ${siteName}:`, error.message);\n    return [];\n  }\n}\n\n// Extraction des offres selon le site\nfunction extraireOffres(html, siteName, url) {\n  // Patterns de recherche pour chaque site\n  const patterns = {\n    'apec.fr': {\n      titleRegex: /<h3[^>]*class=\"[^\"]*title[^\"]*\"[^>]*>([^<]+)<\\/h3>/gi,\n      companyRegex: /<span[^>]*class=\"[^\"]*company[^\"]*\"[^>]*>([^<]+)<\\/span>/gi,\n      linkRegex: /<a[^>]*href=\"([^\"]*offre[^\"]*)\"/gi\n    },\n    'indeed.com': {\n      titleRegex: /<h2[^>]*class=\"[^\"]*jobTitle[^\"]*\"[^>]*>.*?<span[^>]*>([^<]+)<\\/span>/gi,\n      companyRegex: /<span[^>]*class=\"[^\"]*companyName[^\"]*\"[^>]*>([^<]+)<\\/span>/gi,\n      linkRegex: /<a[^>]*href=\"(\\/viewjob[^\"]*)\"/gi\n    },\n    'pole-emploi.fr': {\n      titleRegex: /<h4[^>]*class=\"[^\"]*media-heading[^\"]*\"[^>]*>([^<]+)<\\/h4>/gi,\n      companyRegex: /<p[^>]*class=\"[^\"]*subtitle[^\"]*\"[^>]*>([^<]+)<\\/p>/gi,\n      linkRegex: /<a[^>]*href=\"([^\"]*offre[^\"]*)\"/gi\n    }\n  };\n\n  const siteKey = Object.keys(patterns).find(key => url.includes(key)) || 'default';\n  const pattern = patterns[siteKey] || patterns['indeed.com'];\n  \n  const offres = [];\n  let match;\n  \n  // Extraction des titres\n  const titres = [];\n  while ((match = pattern.titleRegex.exec(html)) !== null) {\n    titres.push(match[1].trim());\n    if (titres.length >= 20) break; // Limite à 20 offres par site\n  }\n  \n  // Génération d'offres simulées (à remplacer par vraie extraction)\n  for (let i = 0; i < Math.min(titres.length, 5); i++) {\n    const titre = titres[i] || `Offre ${i + 1} - ${siteName}`;\n    \n    offres.push({\n      id: `${siteName}-${Date.now()}-${i}`,\n      title: titre,\n      company: `Entreprise ${i + 1}`,\n      description: `Description pour ${titre}. Alternance en cybersécurité avec formation et missions pratiques.`,\n      location: config.localisation,\n      source: siteName,\n      url: url,\n      date_scraped: new Date().toISOString(),\n      keywords: ['alternance', 'cybersécurité', 'sécurité informatique']\n    });\n  }\n  \n  return offres;\n}\n\n// Scraping de tous les sites\nconst promises = sites.map((url, index) => {\n  const siteName = extractSiteName(url);\n  return scraperSite(url, siteName);\n});\n\nfunction extractSiteName(url) {\n  if (url.includes('apec.fr')) return 'APEC';\n  if (url.includes('indeed.com')) return 'Indeed';\n  if (url.includes('pole-emploi.fr') || url.includes('labonnealternance')) return 'France Travail';\n  if (url.includes('walt.community')) return 'Walt';\n  if (url.includes('bloom-alternance.fr')) return 'Bloom Alternance';\n  return 'Site Inconnu';\n}\n\ntry {\n  const resultats = await Promise.all(promises);\n  \n  // Consolidation des offres\n  resultats.forEach(offres => {\n    offresCollectees.push(...offres);\n  });\n  \n  console.log(`🎯 === SCRAPING TERMINÉ ===`);\n  console.log(`📊 Total offres collectées: ${offresCollectees.length}`);\n  \n  // Dédoublonnage basique\n  const offresUniques = offresCollectees.filter((offre, index, self) => \n    index === self.findIndex(o => o.title === offre.title && o.company === offre.company)\n  );\n  \n  console.log(`🧹 Après dédoublonnage: ${offresUniques.length} offres`);\n  \n  return offresUniques.map(offre => ({ json: offre }));\n  \n} catch (error) {\n  console.log('🚨 Erreur globale scraping:', error.message);\n  \n  // Retour d'offres de test en cas d'erreur\n  const offresTest = [\n    {\n      id: 'test-1',\n      title: 'Alternant Cybersécurité - SOC Analyst',\n      company: 'SecureTech Solutions',\n      description: 'Rejoignez notre équipe SOC pour une alternance en cybersécurité. Missions: surveillance, analyse d\\'incidents, réponse aux menaces.',\n      location: 'Paris, France',\n      source: 'TEST',\n      url: 'https://example.com/offre1',\n      date_scraped: new Date().toISOString(),\n      keywords: ['alternance', 'cybersécurité', 'SOC']\n    },\n    {\n      id: 'test-2',\n      title: 'Stage - Marketing Digital', \n      company: 'AgenceWeb',\n      description: 'Stage en marketing digital, création de contenu et gestion des réseaux sociaux.',\n      location: 'Lyon, France',\n      source: 'TEST',\n      url: 'https://example.com/offre2',\n      date_scraped: new Date().toISOString(),\n      keywords: ['stage', 'marketing', 'digital']\n    },\n    {\n      id: 'test-3',\n      title: 'Alternant Pentesteur Junior',\n      company: 'CyberAudit Pro',\n      description: 'Alternance en tests d\\'intrusion et audit de sécurité. Formation complète aux outils de pentest.',\n      location: 'Marseille, France', \n      source: 'TEST',\n      url: 'https://example.com/offre3',\n      date_scraped: new Date().toISOString(),\n      keywords: ['alternance', 'pentest', 'sécurité']\n    }\n  ];\n  \n  console.log('🔄 Utilisation des offres de test');\n  return offresTest.map(offre => ({ json: offre }));\n}"
+      },
+      "id": "scraper-node-003",
+      "name": "🕷️ Scraper Multi-Sites",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CLASSIFICATION MISTRAL LARGE - OPTIMISÉE POUR ALTERNANCES CYBERSÉCURITÉ\n\n// Configuration avec modèle performant\nconst config = {\n  apiKey: process.env.MISTRAL_API_KEY || 'fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95',\n  apiUrl: 'https://api.mistral.ai/v1/chat/completions',\n  model: 'mistral-large-latest', // Modèle le plus performant\n  temperature: 0.1,\n  max_tokens: 200\n};\n\nconst offre = $input.item.json;\n\nconsole.log(`🤖 === CLASSIFICATION MISTRAL LARGE: ${offre.title} ===`);\nconsole.log('🏢 Entreprise:', offre.company);\nconsole.log('📍 Source:', offre.source);\nconsole.log('🔗 URL:', offre.url);\n\n// Prompt expert optimisé pour la détection d'alternances cybersécurité\nconst prompt = `Tu es un expert RH spécialisé en cybersécurité et alternance.\n\nAnalyse cette offre d'emploi :\n\n**TITRE:** ${offre.title}\n**ENTREPRISE:** ${offre.company}\n**DESCRIPTION:** ${offre.description || 'Non spécifiée'}\n**LOCALISATION:** ${offre.location}\n**MOTS-CLÉS:** ${offre.keywords ? offre.keywords.join(', ') : 'Aucun'}\n\n**MISSION:** Détermine si cette offre correspond EXACTEMENT à une ALTERNANCE en CYBERSÉCURITÉ.\n\n**CRITÈRES OBLIGATOIRES:**\n\n1. **TYPE DE CONTRAT:**\n   ✅ ALTERNANCE (contrat d'apprentissage ou professionnalisation)\n   ❌ Stage, CDI, CDD, freelance, mission\n\n2. **DOMAINE CYBERSÉCURITÉ:**\n   ✅ Sécurité informatique, SOC, SIEM, pentest, audit sécurité, forensic, GRC sécurité\n   ✅ Analyste sécurité, ingénieur cybersécurité, consultant sécurité\n   ❌ Développement web, marketing, RH, comptabilité\n\n3. **NIVEAU:**\n   ✅ Junior, débutant, étudiant, formation\n   ❌ Senior, expert, 5+ ans d'expérience\n\n**ANALYSE:**\nExamine attentivement le titre et la description.\nRecherche les mots-clés spécifiques : \"alternance\", \"apprentissage\", \"cybersécurité\", \"sécurité informatique\".\n\n**RÉPONSE:**\nRéponds UNIQUEMENT par:\n- **VALIDE** si l'offre respecte TOUS les critères\n- **INVALIDE** si un seul critère n'est pas respecté\n\nAjoute en une ligne la raison principale de ton choix.`;\n\n// Payload optimisé\nconst payload = {\n  model: config.model,\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert RH spécialisé en cybersécurité. Tu analyses les offres d'emploi avec une précision chirurgicale pour identifier les vraies alternances en cybersécurité.\"\n    },\n    {\n      role: \"user\", \n      content: prompt\n    }\n  ],\n  temperature: config.temperature,\n  max_tokens: config.max_tokens\n};\n\nconsole.log('📦 Payload Mistral Large préparé');\nconsole.log('🎯 Modèle utilisé:', config.model);\nconsole.log('📏 Taille prompt:', prompt.length, 'caractères');\n\ntry {\n  // Vérification fetch\n  const fetchFn = typeof fetch !== 'undefined' ? fetch : \n                 (typeof globalThis.fetch !== 'undefined' ? globalThis.fetch : null);\n  \n  if (!fetchFn) {\n    throw new Error('Fetch API non disponible');\n  }\n\n  console.log('🌐 Appel API Mistral Large...');\n  \n  const response = await fetchFn(config.apiUrl, {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Authorization': `Bearer ${config.apiKey}`\n    },\n    body: JSON.stringify(payload)\n  });\n\n  console.log('📊 Status HTTP:', response.status);\n\n  if (!response.ok) {\n    const errorText = await response.text();\n    console.log('❌ Erreur API Mistral:', response.status, errorText);\n    \n    return {\n      json: {\n        ...offre,\n        mistral_response: 'ERREUR_API',\n        classification: 'ERREUR',\n        is_valid: false,\n        confidence: 0,\n        error: `HTTP ${response.status}: ${errorText}`,\n        model_used: config.model,\n        processed_at: new Date().toISOString()\n      }\n    };\n  }\n\n  const data = await response.json();\n  console.log('📥 Réponse Mistral Large reçue');\n\n  if (data?.choices?.[0]?.message?.content) {\n    const content = data.choices[0].message.content.trim();\n    \n    console.log('✅ === MISTRAL LARGE SUCCESS ===');\n    console.log('📝 Réponse complète:', content);\n    \n    // Analyse intelligente de la réponse\n    const contentUpper = content.toUpperCase();\n    let classification, isValid, confidence, raison;\n    \n    // Extraction de la raison\n    const lignes = content.split('\\n').filter(l => l.trim());\n    raison = lignes.length > 1 ? lignes[1] : 'Analyse automatique';\n    \n    if (contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE')) {\n      classification = 'VALIDE';\n      isValid = true;\n      confidence = 0.95; // Confiance élevée avec Mistral Large\n      console.log('✅ OFFRE VALIDÉE - Alternance cybersécurité confirmée');\n    } else if (contentUpper.includes('INVALIDE')) {\n      classification = 'INVALIDE';\n      isValid = false;\n      confidence = 0.95;\n      console.log('❌ OFFRE REJETÉE - Ne correspond pas aux critères');\n    } else {\n      classification = 'INCERTAIN';\n      isValid = false;\n      confidence = 0.3;\n      console.log('⚠️ Réponse ambiguë de Mistral Large');\n    }\n\n    console.log('🎯 Classification finale:', classification);\n    console.log('💭 Raison:', raison);\n    console.log('📊 Usage tokens:', JSON.stringify(data.usage || {}));\n\n    return {\n      json: {\n        ...offre,\n        mistral_response: content,\n        classification: classification,\n        is_valid: isValid,\n        confidence: confidence,\n        raison: raison,\n        model_used: data.model || config.model,\n        usage: data.usage || {},\n        processed_at: new Date().toISOString(),\n        method: 'mistral_large_expert'\n      }\n    };\n\n  } else {\n    console.log('❌ Structure réponse Mistral invalide');\n    \n    return {\n      json: {\n        ...offre,\n        mistral_response: 'STRUCTURE_INVALIDE',\n        classification: 'ERREUR',\n        is_valid: false,\n        confidence: 0,\n        error: 'Structure réponse Mistral invalide',\n        model_used: config.model,\n        processed_at: new Date().toISOString()\n      }\n    };\n  }\n\n} catch (error) {\n  console.log('🚨 === ERREUR CRITIQUE ===');\n  console.log('Type:', error.constructor.name);\n  console.log('Message:', error.message);\n  \n  return {\n    json: {\n      ...offre,\n      mistral_response: 'ERREUR_RESEAU',\n      classification: 'ERREUR',\n      is_valid: false,\n      confidence: 0,\n      error: `${error.constructor.name}: ${error.message}`,\n      model_used: config.model,\n      processed_at: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "id": "mistral-node-004",
+      "name": "🧠 Classification Mistral Large",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-valid-id",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "VALIDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-node-005",
+      "name": "✅ Offre Valide ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "valid-action-id",
+              "name": "action",
+              "value": "OFFRE_ALTERNANCE_ACCEPTEE",
+              "type": "string"
+            },
+            {
+              "id": "valid-message-id",
+              "name": "message",
+              "value": "🎯 Alternance cybersécurité VALIDÉE !",
+              "type": "string"
+            },
+            {
+              "id": "valid-score-id",
+              "name": "score_pertinence",
+              "value": "={{ $json.confidence }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "accept-node-006",
+      "name": "🎯 Traitement Offre Valide",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1180, 180]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "invalid-action-id",
+              "name": "action",
+              "value": "OFFRE_REJETEE",
+              "type": "string"
+            },
+            {
+              "id": "invalid-message-id",
+              "name": "message",
+              "value": "❌ Ne correspond pas: {{ $json.raison || 'Critères non respectés' }}",
+              "type": "string"
+            },
+            {
+              "id": "invalid-reason-id",
+              "name": "raison_rejet",
+              "value": "={{ $json.raison }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "reject-node-007",
+      "name": "❌ Traitement Offre Invalide",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1180, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "notify-condition-id",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "OFFRE_ALTERNANCE_ACCEPTEE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "notify-filter-008",
+      "name": "🔔 Notification ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1400, 180]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "notif-id",
+              "name": "notification",
+              "value": "🚨 ALERTE: Nouvelle alternance cybersécurité trouvée !\n\n📋 Titre: {{ $json.title }}\n🏢 Entreprise: {{ $json.company }}\n📍 Lieu: {{ $json.location }}\n🌐 Source: {{ $json.source }}\n🎯 Score: {{ $json.score_pertinence }}\n🔗 Lien: {{ $json.url }}\n\n✅ Validée par Mistral Large",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notification-009",
+      "name": "📬 Préparer Notification",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1620, 180]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🚀 Start": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Configuration Recherche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Configuration Recherche": {
+      "main": [
+        [
+          {
+            "node": "🕷️ Scraper Multi-Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🕷️ Scraper Multi-Sites": {
+      "main": [
+        [
+          {
+            "node": "🧠 Classification Mistral Large",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Classification Mistral Large": {
+      "main": [
+        [
+          {
+            "node": "✅ Offre Valide ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Offre Valide ?": {
+      "main": [
+        [
+          {
+            "node": "🎯 Traitement Offre Valide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Traitement Offre Invalide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Traitement Offre Valide": {
+      "main": [
+        [
+          {
+            "node": "🔔 Notification ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔔 Notification ?": {
+      "main": [
+        [
+          {
+            "node": "📬 Préparer Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "workflow-alternance-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "alternance-workflow-001"
+  },
+  "id": "alternance-cybersec-workflow",
+  "tags": ["alternance", "cybersécurité", "scraping", "mistral"]
+}

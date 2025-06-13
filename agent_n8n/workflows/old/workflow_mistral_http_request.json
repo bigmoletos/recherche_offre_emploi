@@ -1,0 +1,239 @@
+{
+  "name": "Classification Mistral - HTTP Request",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a8c7f4d1-234e-4567-8901-23456789abcd",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GÉNÉRATEUR D'OFFRES TEST RÉALISTES\nconsole.log('🧪 === GÉNÉRATION OFFRES TEST RÉALISTES ===');\n\nconst offresTest = [\n  {\n    id: 'test-valide-1',\n    title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n    company: 'Orange Cyberdefense',\n    description: 'Nous proposons un contrat d\\'apprentissage de 24 mois pour former un analyste cybersécurité au sein de notre SOC (Security Operations Center). Missions : surveillance des systèmes d\\'information, analyse des incidents de sécurité, réponse aux alertes SIEM, veille technologique. Formation : Master 2 cybersécurité en alternance.',\n    location: 'Paris, France',\n    contract_type: 'Contrat d\\'apprentissage',\n    keywords: ['apprentissage', 'cybersécurité', 'SOC', 'alternance'],\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'test-invalide-1',\n    title: 'Stage - Marketing Digital et Communication',\n    company: 'AgenceComm',\n    description: 'Stage de 6 mois en marketing digital. Missions : gestion des réseaux sociaux, création de contenu, campagnes publicitaires, analyse des performances. Recherche étudiant en Master Marketing.',\n    location: 'Lyon, France',\n    contract_type: 'Stage',\n    keywords: ['stage', 'marketing', 'digital', 'communication'],\n    attendu: 'INVALIDE'\n  },\n  {\n    id: 'test-valide-2',\n    title: 'Alternance - Pentesteur Junior en Formation',\n    company: 'Wavestone Cybersecurity',\n    description: 'Formation alternance de 2 ans pour devenir pentesteur. Missions : tests d\\'intrusion sur applications web, audit de sécurité réseau, rédaction de rapports de vulnérabilités.',\n    location: 'Marseille, France',\n    contract_type: 'Contrat de professionnalisation',\n    keywords: ['alternance', 'pentest', 'cybersécurité', 'audit'],\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'test-invalide-2',\n    title: 'CDI - Ingénieur Cybersécurité Senior 7+ ans',\n    company: 'Thales Group',\n    description: 'Poste d\\'ingénieur cybersécurité senior avec 7+ années d\\'expérience. Missions : architecture sécurité, gestion d\\'équipe, audits complexes.',\n    location: 'Toulouse, France',\n    contract_type: 'CDI',\n    keywords: ['CDI', 'senior', 'cybersécurité', 'expérience'],\n    attendu: 'INVALIDE'\n  },\n  {\n    id: 'test-valide-3',\n    title: 'Apprentissage - Consultant GRC Sécurité Débutant',\n    company: 'Deloitte Cyber Risk',\n    description: 'Contrat d\\'apprentissage en Gouvernance, Risque et Conformité (GRC) cybersécurité. Missions : analyse des risques cyber, mise en conformité RGPD/ISO27001.',\n    location: 'Nantes, France',\n    contract_type: 'Contrat d\\'apprentissage',\n    keywords: ['apprentissage', 'GRC', 'cybersécurité', 'conformité'],\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'test-invalide-3',\n    title: 'Stage - Sécurité des Bâtiments et Surveillance',\n    company: 'Securitas France',\n    description: 'Stage de 4 mois en sécurité physique des bâtiments. Missions : surveillance vidéo, contrôle d\\'accès, rondes de sécurité.',\n    location: 'Bordeaux, France',\n    contract_type: 'Stage',\n    keywords: ['stage', 'sécurité physique', 'surveillance', 'bâtiment'],\n    attendu: 'INVALIDE'\n  }\n];\n\nconsole.log('📋 Offres test générées:', offresTest.length);\nconsole.log('✅ Offres VALIDES attendues: 3');\nconsole.log('❌ Offres INVALIDES attendues: 3');\n\noffresTest.forEach((offre, index) => {\n  console.log(`${index + 1}. ${offre.title} → ${offre.attendu}`);\n});\n\nreturn offresTest.map(offre => ({ json: offre }));"
+      },
+      "id": "b9d8e5f2-345f-5678-9012-3456789abcde",
+      "name": "🧪 Générateur Offres Test",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PRÉPARATION DU PROMPT POUR MISTRAL\nconst offre = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION PROMPT: ${offre.title} ===`);\nconsole.log('🔑 ID offre:', offre.id);\nconsole.log('📝 Type contrat:', offre.contract_type);\nconsole.log('🎯 Résultat attendu:', offre.attendu);\n\nconst prompt = `Tu es un expert RH spécialisé en cybersécurité et contrats d'alternance.\n\n🎯 **MISSION**: Analyser si cette offre correspond EXACTEMENT à une ALTERNANCE en CYBERSÉCURITÉ.\n\n📋 **OFFRE À ANALYSER**:\n• **Titre**: ${offre.title}\n• **Entreprise**: ${offre.company}\n• **Description**: ${offre.description}\n• **Type de contrat**: ${offre.contract_type}\n• **Mots-clés**: ${offre.keywords.join(', ')}\n\n🔍 **CRITÈRES OBLIGATOIRES**:\n\n**1. TYPE DE CONTRAT (CRITIQUE)**:\n✅ ALTERNANCE: \"alternance\", \"apprentissage\", \"contrat pro\", \"contrat de professionnalisation\"\n❌ AUTRES: \"stage\", \"CDI\", \"CDD\", \"freelance\", \"mission\"\n\n**2. DOMAINE CYBERSÉCURITÉ (CRITIQUE)**:\n✅ CYBER: \"cybersécurité\", \"sécurité informatique\", \"sécurité des SI\"\n✅ SPÉCIALITÉS: \"SOC\", \"SIEM\", \"pentest\", \"audit sécurité\", \"GRC\", \"forensic\"\n❌ AUTRES: \"sécurité physique\", \"sécurité bâtiment\", \"surveillance\", \"marketing\"\n\n📝 **FORMAT DE RÉPONSE OBLIGATOIRE**:\n**CLASSIFICATION**: VALIDE ou INVALIDE\n**JUSTIFICATION**: [Explique en 1-2 phrases pourquoi]\n\nAnalyse maintenant cette offre.`;\n\nconst payload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert RH avec 15 ans d'expérience en cybersécurité et alternance. Tu analyses les offres avec précision.\"\n    },\n    {\n      role: \"user\",\n      content: prompt\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 300\n};\n\nconsole.log('📦 Payload préparé pour HTTP Request');\nconsole.log('📏 Taille prompt:', prompt.length, 'caractères');\n\n// Passer les données à HTTP Request\nreturn {\n  json: {\n    ...offre,\n    mistral_payload: payload,\n    prompt_size: prompt.length\n  }\n};"
+      },
+      "id": "c0e9f6g3-456g-6789-0123-456789abcdef",
+      "name": "📝 Préparation Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "{\n  \"model\": \"{{ $json.mistral_payload.model }}\",\n  \"messages\": {{ $json.mistral_payload.messages }},\n  \"temperature\": {{ $json.mistral_payload.temperature }},\n  \"max_tokens\": {{ $json.mistral_payload.max_tokens }}\n}",
+        "options": {}
+      },
+      "id": "d1f0a7h4-567h-7890-1234-56789abcdef0",
+      "name": "🌐 Appel Mistral API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE DE LA RÉPONSE MISTRAL\nconst offre = $input.first().json;\nconst mistralResponse = $input.last().json;\n\nconsole.log(`📥 === ANALYSE RÉPONSE MISTRAL: ${offre.title} ===`);\nconsole.log('🔑 ID offre:', offre.id);\nconsole.log('🎯 Résultat attendu:', offre.attendu);\n\n// Vérifier la structure de la réponse\nif (!mistralResponse.choices || !mistralResponse.choices[0] || !mistralResponse.choices[0].message) {\n  console.log('❌ Structure réponse Mistral invalide');\n  console.log('🔍 Clés trouvées:', Object.keys(mistralResponse));\n  \n  return {\n    json: {\n      ...offre,\n      mistral_response: 'STRUCTURE_INVALIDE',\n      classification: 'ERREUR',\n      is_valid: false,\n      confidence: 0,\n      error: 'Structure réponse Mistral invalide',\n      processed_at: new Date().toISOString()\n    }\n  };\n}\n\nconst content = mistralResponse.choices[0].message.content.trim();\nconsole.log('📝 Réponse Mistral complète:', content);\n\n// Classification avec logs de débogage détaillés\nconst contentUpper = content.toUpperCase();\nlet classification, isValid, confidence;\n\n// Recherche de patterns précis\nconst hasClassificationValide = /\\*\\*CLASSIFICATION\\*\\*:\\s*VALIDE/i.test(content);\nconst hasClassificationInvalide = /\\*\\*CLASSIFICATION\\*\\*:\\s*INVALIDE/i.test(content);\nconst hasValideSimple = contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE');\nconst hasInvalideSimple = contentUpper.includes('INVALIDE');\n\nconsole.log('🔍 === DEBUG CLASSIFICATION ===');\nconsole.log('Pattern **CLASSIFICATION**: VALIDE found:', hasClassificationValide);\nconsole.log('Pattern **CLASSIFICATION**: INVALIDE found:', hasClassificationInvalide);\nconsole.log('Simple VALIDE (sans INVALIDE):', hasValideSimple);\nconsole.log('Simple INVALIDE:', hasInvalideSimple);\nconsole.log('Content contains VALIDE:', contentUpper.includes('VALIDE'));\nconsole.log('Content contains INVALIDE:', contentUpper.includes('INVALIDE'));\n\nif (hasClassificationValide || (hasValideSimple && !hasInvalideSimple)) {\n  classification = 'VALIDE';\n  isValid = true;\n  confidence = 0.9;\n  console.log('✅ OFFRE VALIDÉE');\n} else if (hasClassificationInvalide || hasInvalideSimple) {\n  classification = 'INVALIDE';\n  isValid = false;\n  confidence = 0.9;\n  console.log('❌ OFFRE REJETÉE');\n} else {\n  classification = 'INCERTAIN';\n  isValid = false;\n  confidence = 0.3;\n  console.log('⚠️ CLASSIFICATION INCERTAINE');\n}\n\n// Vérification avec résultat attendu\nconst isCorrect = classification === offre.attendu;\nconsole.log(`🎯 Classification: ${classification}`);\nconsole.log(`🎯 Attendu: ${offre.attendu}`);\nconsole.log(`✅ Correct: ${isCorrect}`);\n\n// Retour enrichi\nreturn {\n  json: {\n    ...offre,\n    mistral_response: content,\n    classification: classification,\n    is_valid: isValid,\n    confidence: confidence,\n    model_used: mistralResponse.model || 'mistral-large-latest',\n    usage: mistralResponse.usage || {},\n    processed_at: new Date().toISOString(),\n    classification_correct: isCorrect,\n    debug: {\n      hasClassificationValide,\n      hasClassificationInvalide,\n      hasValideSimple,\n      hasInvalideSimple\n    }\n  }\n};"
+      },
+      "id": "e2g1b8i5-678i-8901-2345-6789abcdef01",
+      "name": "🔍 Analyse Réponse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "12345678-abcd-1234-abcd-123456789abc",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "VALIDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f3h2c9j6-789j-9012-3456-789abcdef012",
+      "name": "Offre Valide ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "33333333-4444-5555-6666-777777777777",
+              "name": "action",
+              "value": "OFFRE_ACCEPTEE",
+              "type": "string"
+            },
+            {
+              "id": "99999999-aaaa-bbbb-cccc-dddddddddddd",
+              "name": "message",
+              "value": "✅ Offre validée pour alternance cybersécurité",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "g4i3d0k7-890k-0123-4567-890abcdef123",
+      "name": "💚 Traitement Valide",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "55555555-6666-7777-8888-999999999999",
+              "name": "action",
+              "value": "OFFRE_REJETEE",
+              "type": "string"
+            },
+            {
+              "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+              "name": "message",
+              "value": "❌ Offre ne correspond pas aux critères",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "h5j4e1l8-901l-1234-5678-901abcdef234",
+      "name": "❌ Traitement Invalide",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1560, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🧪 Générateur Offres Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧪 Générateur Offres Test": {
+      "main": [
+        [
+          {
+            "node": "📝 Préparation Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Préparation Prompt": {
+      "main": [
+        [
+          {
+            "node": "🌐 Appel Mistral API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Appel Mistral API": {
+      "main": [
+        [
+          {
+            "node": "🔍 Analyse Réponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Analyse Réponse": {
+      "main": [
+        [
+          {
+            "node": "Offre Valide ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offre Valide ?": {
+      "main": [
+        [
+          {
+            "node": "💚 Traitement Valide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Traitement Invalide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "12345678-1234-1234-1234-123456789abc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "12345678-1234-1234-1234-123456789abc"
+  },
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "tags": []
+}

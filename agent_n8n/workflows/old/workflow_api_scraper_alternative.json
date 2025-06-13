@@ -1,0 +1,184 @@
+{
+  "name": "Agent Alternance API - Version Alternative",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:9555/health",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-api-health",
+      "name": "Test API Santé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9555/scrape-offres",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"termes\": [\"alternance cybersécurité\"],\n  \"max_offres\": 3,\n  \"sources\": [\"pole_emploi\"]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "collecte-offres-api",
+      "name": "Collecte Offres API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results.offres",
+        "options": {}
+      },
+      "id": "separer-offres",
+      "name": "Séparer Offres",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Construction sécurisée de la requête Mistral\nconst offre = $json;\n\n// Nettoyage et validation des données\nconst title = (offre.title || 'Titre manquant').replace(/\"/g, \"'\").substring(0, 100);\nconst company = (offre.company || 'Entreprise manquante').replace(/\"/g, \"'\").substring(0, 50);\nconst location = (offre.location || 'Lieu manquant').replace(/\"/g, \"'\").substring(0, 50);\n\nconsole.log('🔧 Construction requête Mistral pour:', title);\n\n// Construction manuelle du JSON Mistral\nconst mistralRequest = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: `Analyse cette offre: ${title} chez ${company} à ${location}. Réponds par VALIDE ou INVALIDE.`\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 100\n};\n\nconsole.log('📤 Requête Mistral construite:', JSON.stringify(mistralRequest, null, 2));\n\nreturn {\n  json: {\n    mistral_request: mistralRequest,\n    original_offre: offre\n  }\n};"
+      },
+      "id": "construire-requete-mistral",
+      "name": "Construire Requête Mistral",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.mistral_request) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "classification-mistral",
+      "name": "Classification IA Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Test API Santé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Santé": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres API": {
+      "main": [
+        [
+          {
+            "node": "Séparer Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer Offres": {
+      "main": [
+        [
+          {
+            "node": "Construire Requête Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construire Requête Mistral": {
+      "main": [
+        [
+          {
+            "node": "Classification IA Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "alternance-api-alternative",
+      "name": "Alternative API"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T17:30:00.000Z",
+  "versionId": "1.0.0"
+}

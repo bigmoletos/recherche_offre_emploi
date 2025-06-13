@@ -1,0 +1,116 @@
+{
+  "name": "Test Mistral Final Fix - Debug",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Déclencheur Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "Alternance Cybersécurité - Analyste SOC"
+            },
+            {
+              "name": "company",
+              "value": "TechSecure Corp"
+            },
+            {
+              "name": "location",
+              "value": "Paris"
+            },
+            {
+              "name": "description",
+              "value": "Formation en alternance de 24 mois"
+            },
+            {
+              "name": "scraper_source",
+              "value": "pole_emploi"
+            }
+          ]
+        }
+      },
+      "id": "donnees-test",
+      "name": "Données Test",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-small-latest\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyse cette offre: \" + $json.title + \" chez \" + $json.company + \". Réponds par VALIDE ou INVALIDE.\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 10\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-mistral-final",
+      "name": "Test Mistral Final Fix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Déclencheur Manuel": {
+      "main": [
+        [
+          {
+            "node": "Données Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Données Test": {
+      "main": [
+        [
+          {
+            "node": "Test Mistral Final Fix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-mistral-final-fix",
+      "name": "Test Mistral Final Fix"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T17:25:00.000Z",
+  "versionId": "1.0.0"
+}

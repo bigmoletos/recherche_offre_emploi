@@ -1,0 +1,227 @@
+{
+  "name": "Agent Alternance - Avec Fichier Excel",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "*/15 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-excel",
+      "name": "Déclencheur Test (15min)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Générateur de données enrichies pour Excel\nconst offers = [\n  {\n    title: \"Alternance Cybersécurité - Analyste SOC H/F\",\n    company: \"SecureTech Solutions\",\n    location: \"Paris (75)\",\n    duration: \"24 mois\",\n    start_date: \"septembre 2025\",\n    description: \"Recherchons alternant pour poste d'analyste SOC. Formation cybersécurité Master 1/2. Missions: monitoring sécurité, analyse incidents, reporting.\",\n    url: \"https://pole-emploi.fr/candidat/offres/recherche/detail/123456\",\n    scraper_source: \"pole_emploi\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Formation Cybersécurité - École Supérieure\",\n    company: \"École Supérieure Informatique\",\n    location: \"Lyon (69)\",\n    duration: \"3 ans\",\n    start_date: \"septembre 2025\",\n    description: \"Formation diplômante en cybersécurité. Programme complet théorique avec stages en entreprise.\",\n    url: \"https://indeed.fr/formation/cybersecurite-123\",\n    scraper_source: \"indeed\",\n    ai_response: \"INVALIDE: Formation d'école\",\n    is_valid: false,\n    status: \"❌ REJETÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance DevSecOps - Infrastructure Sécurisée\",\n    company: \"TechCorp Enterprise\",\n    location: \"Marseille (13)\",\n    duration: \"18 mois\",\n    start_date: \"septembre 2025\",\n    description: \"Poste d'alternant DevSecOps. Mission: automatisation sécurité, CI/CD sécurisé, audit infrastructure.\",\n    url: \"https://apec.fr/candidat/recherche-emploi/detail/123789\",\n    scraper_source: \"apec\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance Pentester Junior - Audit Sécurité\",\n    company: \"CyberSec Consulting\",\n    location: \"Toulouse (31)\",\n    duration: \"24 mois\",\n    start_date: \"octobre 2025\",\n    description: \"Alternance pentesting et audit sécurité. Formation sur tests d'intrusion, analyse vulnérabilités.\",\n    url: \"https://linkedin.com/jobs/view/987654321\",\n    scraper_source: \"linkedin\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance RSSI Junior - Gouvernance Sécurité\",\n    company: \"Digital Security Corp\",\n    location: \"Nantes (44)\",\n    duration: \"24 mois\",\n    start_date: \"janvier 2026\",\n    description: \"Alternance en gouvernance sécurité. Missions: politique sécurité, conformité RGPD, formation utilisateurs.\",\n    url: \"https://monster.fr/emploi/alternance-rssi-123456\",\n    scraper_source: \"monster\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  }\n];\n\nconsole.log(`📋 Génération de ${offers.length} offres pour Excel`);\nconsole.log(`✅ Offres validées: ${offers.filter(o => o.is_valid).length}`);\nconsole.log(`❌ Offres rejetées: ${offers.filter(o => !o.is_valid).length}`);\n\nreturn offers.map(offer => ({ json: offer }));"
+      },
+      "id": "data-enriched",
+      "name": "Données Enrichies",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "filter-valid-only",
+      "name": "Filtrer Validées",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Formatage pour Excel\nconst offer = $json;\nconst timestamp = new Date().toLocaleDateString('fr-FR');\n\n// Données formatées pour Excel\nconst excelRow = {\n  'N°': 1, // Sera réajusté après agrégation\n  'Titre': offer.title || 'N/A',\n  'Entreprise': offer.company || 'N/A',\n  'Localisation': offer.location || 'N/A',\n  'Durée': offer.duration || 'N/A',\n  'Date de début': offer.start_date || 'N/A',\n  'Site source': offer.scraper_source || 'N/A',\n  'Lien direct': offer.url || 'N/A',\n  'Validation IA': offer.ai_response || 'VALIDE',\n  'Statut': offer.status || '✅ VALIDÉE',\n  'Date traitement': new Date(offer.processed_at).toLocaleDateString('fr-FR'),\n  'Description': (offer.description || '').substring(0, 200) + '...' // Limité pour Excel\n};\n\nconsole.log(`📊 Formatage Excel: ${excelRow.Titre}`);\n\nreturn { json: excelRow };"
+      },
+      "id": "format-excel",
+      "name": "Format Excel",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "offres_excel",
+        "options": {}
+      },
+      "id": "aggregate-excel",
+      "name": "Agréger pour Excel",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Préparation fichier Excel final\nconst offers = $json.offres_excel || [];\nconst timestamp = new Date().toISOString().slice(0,19).replace(/[:-]/g, '');\nconst filename = `alternance_cybersecurite_${timestamp}.xlsx`;\n\nconsole.log(`\\n🎯 ====== GÉNÉRATION FICHIER EXCEL ====== 🎯`);\nconsole.log(`📅 Date: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`);\nconsole.log(`📄 Fichier: ${filename}`);\nconsole.log(`✅ Total offres: ${offers.length}`);\nconsole.log(`🤖 Moteur IA: Mistral Large`);\nconsole.log(``);\n\n// Réajustement des numéros\nconst excelData = offers.map((offer, index) => ({\n  ...offer,\n  'N°': index + 1\n}));\n\n// Statistiques pour onglet séparé\nconst sites_scrapes = [...new Set(offers.map(o => o['Site source']))];\nconst top_locations = Object.entries(\n  offers.reduce((acc, o) => {\n    const loc = (o.Localisation || 'Paris').split('(')[0].trim();\n    acc[loc] = (acc[loc] || 0) + 1;\n    return acc;\n  }, {})\n).sort((a,b) => b[1] - a[1]);\n\nconst statsData = [\n  { 'Métrique': 'Total offres validées', 'Valeur': offers.length },\n  { 'Métrique': 'Sites scrapés', 'Valeur': sites_scrapes.length },\n  { 'Métrique': 'Moteur IA', 'Valeur': 'Mistral Large' },\n  { 'Métrique': 'Date génération', 'Valeur': new Date().toLocaleDateString('fr-FR') },\n  { 'Métrique': 'Heure génération', 'Valeur': new Date().toLocaleTimeString('fr-FR') }\n];\n\n// Locations pour onglet séparé\nconst locationsData = top_locations.map(([ville, count]) => ({\n  'Ville': ville,\n  'Nombre d\\'offres': count,\n  'Pourcentage': Math.round((count / offers.length) * 100) + '%'\n}));\n\nconsole.log(`🌐 Sites scrapés: ${sites_scrapes.join(', ')}`);\nconsole.log(`🏆 Top locations: ${top_locations.map(l => `${l[0]} (${l[1]})`).join(', ')}`);\nconsole.log(``);\nconsole.log(`📋 DONNÉES EXCEL PRÉPARÉES:`);\nexcelData.forEach(offer => {\n  console.log(`   ${offer['N°']}. ${offer.Titre} - ${offer.Entreprise}`);\n});\nconsole.log(``);\nconsole.log(`💾 Fichier Excel prêt à générer: ${filename}`);\nconsole.log(`🎯 ======================================= 🎯`);\n\nconst result = {\n  filename: filename,\n  excel_data: excelData,\n  stats_data: statsData,\n  locations_data: locationsData,\n  total_offres: offers.length,\n  sites_scrapes: sites_scrapes,\n  generation_date: new Date().toISOString()\n};\n\nreturn [{ json: result }];"
+      },
+      "id": "prepare-excel-file",
+      "name": "Préparer Fichier Excel",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "mode": "multipletables",
+        "tables": {
+          "tables": [
+            {
+              "tableName": "Offres_Alternance",
+              "tableData": "={{ $json.excel_data }}"
+            },
+            {
+              "tableName": "Statistiques",
+              "tableData": "={{ $json.stats_data }}"
+            },
+            {
+              "tableName": "Localisations",
+              "tableData": "={{ $json.locations_data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-excel",
+      "name": "Créer Excel",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [1560, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log final avec instructions\nconst excelBinary = $binary;\nconst originalData = $input.first()?.json || {};\n\nconsole.log(`\\n✅ ====== FICHIER EXCEL GÉNÉRÉ ====== ✅`);\nconsole.log(`📄 Nom du fichier: ${originalData.filename}`);\nconsole.log(`📊 Taille du fichier: ${Object.keys(excelBinary).length > 0 ? 'Généré avec succès' : 'Erreur'}`);\nconsole.log(`✅ Total offres: ${originalData.total_offres}`);\nconsole.log(``);\nconsole.log(`📋 CONTENU DU FICHIER EXCEL:`);\nconsole.log(`   📑 Onglet 1: Offres_Alternance (${originalData.total_offres} lignes)`);\nconsole.log(`   📊 Onglet 2: Statistiques (${originalData.stats_data?.length || 0} métriques)`);\nconsole.log(`   🏆 Onglet 3: Localisations (répartition par ville)`);\nconsole.log(``);\nconsole.log(`💾 TÉLÉCHARGEMENT:`);\nconsole.log(`   1. Allez dans l'onglet 'Output' de ce nœud`);\nconsole.log(`   2. Cliquez sur 'Download binary file'`);\nconsole.log(`   3. Le fichier sera téléchargé automatiquement`);\nconsole.log(``);\nconsole.log(`📧 ALTERNATIVE:`);\nconsole.log(`   - Ouvrez le fichier Excel`);\nconsole.log(`   - Copiez les données`);\nconsole.log(`   - Envoyez par email à bigmoletos@yopmail.com`);\nconsole.log(``);\nconsole.log(`✅ ====== SUCCÈS ====== ✅`);\n\nconst result = {\n  filename: originalData.filename,\n  status: 'Excel généré avec succès',\n  download_instructions: 'Consultez l\\'onglet Output pour télécharger',\n  excel_ready: true\n};\n\nreturn { json: result };"
+      },
+      "id": "excel-success",
+      "name": "Excel Prêt",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1780, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log des rejets\nconst rejectedOffer = $json;\n\nconst logEntry = {\n  titre: rejectedOffer.title,\n  entreprise: rejectedOffer.company,\n  raison_rejet: rejectedOffer.ai_response,\n  date_rejet: new Date().toISOString()\n};\n\nconsole.log('❌ Offre rejetée (exclue du Excel):', JSON.stringify(logEntry, null, 2));\n\nreturn { json: logEntry };"
+      },
+      "id": "log-rejected-excel",
+      "name": "Log Rejets",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 320]
+    }
+  ],
+  "connections": {
+    "Déclencheur Test (15min)": {
+      "main": [
+        [
+          {
+            "node": "Données Enrichies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Données Enrichies": {
+      "main": [
+        [
+          {
+            "node": "Filtrer Validées",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrer Validées": {
+      "main": [
+        [
+          {
+            "node": "Format Excel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rejets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Excel": {
+      "main": [
+        [
+          {
+            "node": "Agréger pour Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agréger pour Excel": {
+      "main": [
+        [
+          {
+            "node": "Préparer Fichier Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer Fichier Excel": {
+      "main": [
+        [
+          {
+            "node": "Créer Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer Excel": {
+      "main": [
+        [
+          {
+            "node": "Excel Prêt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "excel-output",
+      "name": "Excel Output"
+    }
+  ],
+  "triggerCount": 1
+}

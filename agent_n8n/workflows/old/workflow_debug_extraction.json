@@ -1,0 +1,304 @@
+{
+  "name": "Debug Extraction - Workflow Corrigé",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:9555/health",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-api-health",
+      "name": "Test API Santé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9555/scrape-offres",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"termes\": [\"alternance cybersécurité\"],\n  \"max_offres\": 3,\n  \"sources\": [\"pole_emploi\"]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "collecte-offres-api",
+      "name": "Collecte Offres API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Debug complet - AVANT split\nconsole.log('=== AVANT SPLIT - STRUCTURE COMPLETE ===');\nconsole.log('JSON complet:', JSON.stringify($json, null, 2));\nconsole.log('Type:', typeof $json);\nconsole.log('Success:', $json.success);\nconsole.log('Results:', !!$json.results);\nconsole.log('Offres array:', !!$json.results?.offres);\nconsole.log('Nombre offres:', $json.results?.offres?.length);\n\nif ($json.results?.offres) {\n  console.log('=== OFFRES INDIVIDUELLES ===');\n  $json.results.offres.forEach((offre, i) => {\n    console.log(`Offre ${i}:`, {\n      title: offre.title,\n      company: offre.company,\n      location: offre.location,\n      keys: Object.keys(offre)\n    });\n  });\n}\n\nreturn { json: $json };"
+      },
+      "id": "debug-avant-split",
+      "name": "Debug Avant Split",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results.offres",
+        "options": {}
+      },
+      "id": "separer-offres",
+      "name": "Séparer Offres",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Debug APRES split - comprendre ce qui arrive\nconsole.log('=== APRES SPLIT - CE QUI ARRIVE ===');\nconsole.log('Type de $json:', typeof $json);\nconsole.log('$json keys:', Object.keys($json || {}));\nconsole.log('$json complet:', JSON.stringify($json, null, 2));\n\n// Essayer différentes façons d'accéder aux données\nconsole.log('=== TENTATIVES D\\'ACCES ===');\nconsole.log('$json.title:', $json.title);\nconsole.log('$json.company:', $json.company);\nconsole.log('$json.location:', $json.location);\n\n// Vérifier si c'est la bonne structure\nif ($json.title && $json.company) {\n  console.log('✅ DONNEES TROUVEES!');\n  console.log('Titre:', $json.title);\n  console.log('Entreprise:', $json.company);\n  console.log('Lieu:', $json.location);\n  \n  // Préparation pour Mistral avec les bonnes données\n  const prompt = `Analyse cette offre d'emploi :\n\nTitre: ${$json.title}\nEntreprise: ${$json.company}\nLocalisation: ${$json.location}\nDescription: ${$json.description || 'Non spécifiée'}\n\nCette offre correspond-elle à une alternance en cybersécurité ou sécurité informatique ?\n\nRéponds uniquement par: VALIDE ou INVALIDE`;\n  \n  console.log('🤖 Prompt créé:', prompt.substring(0, 100) + '...');\n  \n  return {\n    json: {\n      extracted_data: {\n        title: $json.title,\n        company: $json.company,\n        location: $json.location,\n        description: $json.description || ''\n      },\n      prompt: prompt,\n      success: true,\n      debug_extraction: 'REUSSIE'\n    }\n  };\n} else {\n  console.log('❌ DONNEES MANQUANTES!');\n  console.log('Structure reçue non conforme');\n  \n  return {\n    json: {\n      extracted_data: {\n        title: 'EXTRACTION_ECHOUEE',\n        company: 'EXTRACTION_ECHOUEE',\n        location: 'EXTRACTION_ECHOUEE',\n        description: 'EXTRACTION_ECHOUEE'\n      },\n      prompt: 'ERREUR_EXTRACTION',\n      success: false,\n      debug_extraction: 'ECHEC',\n      received_structure: $json\n    }\n  };\n}"
+      },
+      "id": "debug-extraction",
+      "name": "Debug Extraction",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Test Mistral avec données extraites\nconst data = $json;\n\nif (data.success && data.prompt !== 'ERREUR_EXTRACTION') {\n  console.log('🚀 Préparation requête Mistral');\n  console.log('Données extraites:', data.extracted_data);\n  \n  // Construction requête Mistral simple\n  const mistralPayload = {\n    \"model\": \"mistral-small-latest\",\n    \"messages\": [\n      {\n        \"role\": \"user\",\n        \"content\": data.prompt\n      }\n    ],\n    \"temperature\": 0.1,\n    \"max_tokens\": 10\n  };\n  \n  console.log('📨 Payload Mistral prêt');\n  \n  return {\n    json: {\n      mistral_payload: mistralPayload,\n      original_data: data.extracted_data,\n      ready_for_mistral: true\n    }\n  };\n} else {\n  console.log('❌ Données non prêtes pour Mistral');\n  return {\n    json: {\n      error: 'Données extraction insuffisantes',\n      debug_info: data,\n      ready_for_mistral: false\n    }\n  };\n}"
+      },
+      "id": "preparation-test-mistral",
+      "name": "Préparation Test Mistral",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.ready_for_mistral }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "condition-mistral",
+      "name": "Condition Mistral",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.mistral_payload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-mistral-final",
+      "name": "Test Mistral Final",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Résultat final\nconst errorData = $json;\nconsole.log('❌ Erreur - données non prêtes pour Mistral');\nconsole.log('Debug info:', JSON.stringify(errorData, null, 2));\n\nreturn {\n  json: {\n    error: 'Workflow arrêté - extraction de données échouée',\n    debug_details: errorData\n  }\n};"
+      },
+      "id": "gestion-erreur",
+      "name": "Gestion Erreur",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2000, 360]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Traitement réponse Mistral\nconst mistralResponse = $json;\nconst preparationData = $('Préparation Test Mistral').item.json;\n\nconsole.log('🎯 Réponse Mistral reçue!');\nconsole.log('Type response:', typeof mistralResponse);\nconsole.log('Has choices:', !!mistralResponse.choices);\n\nif (mistralResponse.choices && mistralResponse.choices[0]) {\n  const aiResponse = mistralResponse.choices[0].message.content;\n  console.log('✅ Réponse IA:', aiResponse);\n  \n  return {\n    json: {\n      success: true,\n      offre_data: preparationData.original_data,\n      ai_response: aiResponse,\n      is_valid: aiResponse.toUpperCase().includes('VALIDE'),\n      timestamp: new Date().toISOString()\n    }\n  };\n} else {\n  console.log('❌ Réponse Mistral invalide');\n  return {\n    json: {\n      success: false,\n      error: 'Réponse Mistral invalide',\n      raw_response: mistralResponse\n    }\n  };\n}"
+      },
+      "id": "traitement-resultat",
+      "name": "Traitement Résultat",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2220, 240]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Test API Santé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Santé": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres API": {
+      "main": [
+        [
+          {
+            "node": "Debug Avant Split",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Avant Split": {
+      "main": [
+        [
+          {
+            "node": "Séparer Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer Offres": {
+      "main": [
+        [
+          {
+            "node": "Debug Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Extraction": {
+      "main": [
+        [
+          {
+            "node": "Préparation Test Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Test Mistral": {
+      "main": [
+        [
+          {
+            "node": "Condition Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Condition Mistral": {
+      "main": [
+        [
+          {
+            "node": "Test Mistral Final",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gestion Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Mistral Final": {
+      "main": [
+        [
+          {
+            "node": "Traitement Résultat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "debug-extraction",
+      "name": "Debug Extraction"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T21:00:00.000Z",
+  "versionId": "1.0.0"
+}

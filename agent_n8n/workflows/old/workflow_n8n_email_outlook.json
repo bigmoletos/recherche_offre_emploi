@@ -1,0 +1,131 @@
+{
+  "name": "Agent Alternance - Email Outlook",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "*/15 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-outlook",
+      "name": "Déclencheur Test (15min)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Générateur de données test\nconst offers = [\n  {\n    title: \"Alternance Cybersécurité - SOC Analyst\",\n    company: \"CyberTech Solutions\",\n    location: \"Paris (75)\",\n    duration: \"24 mois\",\n    start_date: \"septembre 2025\",\n    description: \"Poste d'alternant SOC analyst. Formation Master cybersécurité. Missions: surveillance, incidents, rapports.\",\n    url: \"https://pole-emploi.fr/offre/123456\",\n    scraper_source: \"pole_emploi\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance DevSecOps Junior\",\n    company: \"SecureIT Corp\",\n    location: \"Lyon (69)\",\n    duration: \"18 mois\",\n    start_date: \"octobre 2025\",\n    description: \"Alternance DevSecOps. Automatisation sécurité, CI/CD sécurisé, infrastructure.\",\n    url: \"https://apec.fr/offre/789012\",\n    scraper_source: \"apec\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  }\n];\n\nconsole.log(`📋 Génération de ${offers.length} offres pour test email`);\n\nreturn offers.map(offer => ({ json: offer }));"
+      },
+      "id": "data-simple",
+      "name": "Données Test",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 240]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "offres_validees",
+        "options": {}
+      },
+      "id": "aggregate-simple",
+      "name": "Agréger",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [680, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Rapport simple pour email\nconst offers = $json.offres_validees || [];\nconst timestamp = new Date().toLocaleDateString('fr-FR');\n\nconst emailContent = `Bonjour,\n\nRapport alternance cybersécurité du ${timestamp}\n\n✅ ${offers.length} offres validées:\n\n${offers.map((offer, i) => `${i+1}. ${offer.title}\n   🏢 ${offer.company}\n   📍 ${offer.location}\n   🔗 ${offer.url}\n   ⏱️ ${offer.duration}\n`).join('\\n')}\n\nCordialement,\nAgent IA Alternance`;\n\nconst result = {\n  email_subject: `🎯 ${offers.length} Offres Alternance - ${timestamp}`,\n  email_text: emailContent,\n  total_offres: offers.length\n};\n\nconsole.log('📧 Email préparé:', result.email_subject);\n\nreturn [{ json: result }];"
+      },
+      "id": "prepare-email",
+      "name": "Préparer Email",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "fromEmail": "test@outlook.com",
+        "toEmail": "bigmoletos@yopmail.com",
+        "subject": "={{ $json.email_subject }}",
+        "text": "={{ $json.email_text }}",
+        "options": {}
+      },
+      "id": "send-email-outlook",
+      "name": "Envoyer Email (Outlook)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1120, 240],
+      "credentials": {
+        "smtp": {
+          "name": "Outlook SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Déclencheur Test (15min)": {
+      "main": [
+        [
+          {
+            "node": "Données Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Données Test": {
+      "main": [
+        [
+          {
+            "node": "Agréger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agréger": {
+      "main": [
+        [
+          {
+            "node": "Préparer Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer Email": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Email (Outlook)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "outlook-email",
+      "name": "Outlook Email"
+    }
+  ],
+  "triggerCount": 1
+}

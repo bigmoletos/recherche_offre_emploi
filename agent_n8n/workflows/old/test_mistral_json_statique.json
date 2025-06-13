@@ -1,0 +1,97 @@
+{
+  "name": "Test Mistral JSON STATIQUE",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "{\n  \"model\": \"mistral-small-latest\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Test JSON statique: Cette offre 'Alternance Cybersécurité' est-elle valide ? Réponds VALIDE ou INVALIDE.\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 20\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "api-statique",
+      "name": "API JSON Statique",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Analyse réponse JSON statique\nconsole.log('🎯 === RÉPONSE JSON STATIQUE ===');\nconsole.log('📊 Type:', typeof $input.first().json);\nconsole.log('🔍 Keys:', Object.keys($input.first().json || {}));\nconsole.log('📋 Response complète:');\nconsole.log(JSON.stringify($input.first().json, null, 2));\n\nconst data = $input.first().json;\n\n// Test structure Mistral\nif (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {\n  const content = data.choices[0].message.content.trim();\n  \n  console.log('✅ === JSON STATIQUE SUCCESS ! ===');\n  console.log('📝 Mistral response:', content);\n  \n  // Classification\n  const contentUpper = content.toUpperCase();\n  const isValid = contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE');\n  const classification = isValid ? 'VALIDE' : 'INVALIDE';\n  \n  console.log('🔍 Classification:', classification);\n  console.log('⚡ Model:', data.model);\n  console.log('📊 Usage:', JSON.stringify(data.usage || {}));\n  \n  return {\n    json: {\n      success: true,\n      mistral_response: content,\n      classification: classification,\n      is_valid: isValid,\n      method: 'json_statique',\n      model_used: data.model,\n      usage: data.usage,\n      test_status: 'JSON_STATIQUE_SUCCESS',\n      recommendation: 'JSON statique fonctionne - le problème vient des expressions N8N'\n    }\n  };\n} \n\n// Erreur API\nelse if (data && data.error) {\n  console.log('🚨 Erreur API JSON statique:', data.error);\n  return {\n    json: {\n      success: false,\n      error: data.error,\n      method: 'json_statique',\n      test_status: 'API_ERROR'\n    }\n  };\n}\n\n// Structure inattendue\nelse {\n  console.log('❌ Structure JSON statique invalide');\n  return {\n    json: {\n      success: false,\n      error: 'Structure réponse invalide',\n      received_data: data,\n      method: 'json_statique',\n      test_status: 'JSON_STATIQUE_FAILED'\n    }\n  };\n}"
+      },
+      "id": "analyse-json",
+      "name": "Analyse JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "API JSON Statique",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API JSON Statique": {
+      "main": [
+        [
+          {
+            "node": "Analyse JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "json-statique",
+      "name": "JSON Statique"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-05T09:45:00.000Z",
+  "versionId": "11.0.0"
+}

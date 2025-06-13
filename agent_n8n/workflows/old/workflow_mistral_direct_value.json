@@ -1,0 +1,191 @@
+{
+  "name": "Workflow Mistral Direct Value",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "test-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "Contrat d'apprentissage - Analyste Cybersécurité SOC"
+            },
+            {
+              "name": "company",
+              "value": "Orange Cyberdefense"
+            },
+            {
+              "name": "description",
+              "value": "Formation alternance 24 mois analyste cybersécurité SOC."
+            },
+            {
+              "name": "contract_type",
+              "value": "Contrat d'apprentissage"
+            }
+          ]
+        }
+      },
+      "id": "test-data",
+      "name": "Test Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "prompt",
+              "value": "ANALYSE OFFRE ALTERNANCE CYBERSÉCURITÉ:\n\nTITRE: {{$json.title}}\nENTREPRISE: {{$json.company}}\nCONTRAT: {{$json.contract_type}}\nDESCRIPTION: {{$json.description}}\n\nCRITÈRES VALIDATION:\n✅ CONTRAT = apprentissage OU alternance OU contrat pro\n✅ DOMAINE = cybersécurité OU sécurité informatique\n❌ EXCLUER = stage, CDI, CDD, commercial, marketing\n\nRÉPONDS EXACTEMENT:\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [raison courte]"
+            }
+          ]
+        }
+      },
+      "id": "prepare-prompt",
+      "name": "Prepare Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer iISnB6RgjwRnpAF09peyjNjDS6HaUUvr"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyContent": "{\\n  \\\"model\\\": \\\"mistral-small-latest\\\",\\n  \\\"messages\\\": [\\n    {\\n      \\\"role\\\": \\\"user\\\",\\n      \\\"content\\\": \\\"{{$json.prompt}}\\\"\\n    }\\n  ],\\n  \\\"max_tokens\\\": 100\\n}",
+        "options": {}
+      },
+      "id": "mistral-http-direct",
+      "name": "Mistral HTTP Direct",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        860,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "classification_result",
+              "value": "{{$json.choices[0].message.content}}"
+            },
+            {
+              "name": "tokens_used",
+              "value": "{{$json.usage.total_tokens}}"
+            },
+            {
+              "name": "model_used",
+              "value": "{{$json.model}}"
+            },
+            {
+              "name": "status",
+              "value": "SUCCESS_DIRECT_VALUE"
+            },
+            {
+              "name": "timestamp",
+              "value": "{{$now}}"
+            },
+            {
+              "name": "api_call",
+              "value": "MISTRAL_DIRECT_HARDCODED"
+            }
+          ]
+        }
+      },
+      "id": "extract-result",
+      "name": "Extract Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Test Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prompt": {
+      "main": [
+        [
+          {
+            "node": "Mistral HTTP Direct",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral HTTP Direct": {
+      "main": [
+        [
+          {
+            "node": "Extract Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "id": "mistral-direct",
+      "name": "mistral-direct"
+    }
+  ]
+}

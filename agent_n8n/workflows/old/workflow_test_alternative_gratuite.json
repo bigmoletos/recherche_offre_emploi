@@ -1,0 +1,239 @@
+{
+  "name": "TEST - Alternative Gratuite (HuggingFace)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-alternative",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TEST AVEC ALTERNATIVE GRATUITE\nconsole.log('🆓 === TEST ALTERNATIVE GRATUITE ===');\n\nconst offreTest = {\n  title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n  company: 'Orange Cyberdefense',\n  description: 'Formation en alternance 24 mois pour analyste cybersécurité SOC. Surveillance systèmes, incidents sécurité, SIEM.',\n  contract_type: 'Contrat d\\'apprentissage',\n  attendu: 'VALIDE'\n};\n\n// TENTATIVE 1 : PROMPT SIMPLE POUR LLAMA\nconst promptSimple = `Analyse cette offre d'emploi :\nTitre: ${offreTest.title}\nType: ${offreTest.contract_type}\nDescription: ${offreTest.description}\n\nEst-ce une offre d'alternance en cybersécurité ? Réponds par VALIDE ou INVALIDE.`;\n\n// TENTATIVE 2 : OPENAI COMPATIBLE (si vous avez un compte)\nconst payloadOpenAI = {\n  model: \"gpt-3.5-turbo\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu classifies les offres d'alternance cybersécurité. Réponds par VALIDE ou INVALIDE.\"\n    },\n    {\n      role: \"user\", \n      content: promptSimple\n    }\n  ],\n  max_tokens: 50,\n  temperature: 0.1\n};\n\nconsole.log('📋 Offre à tester:', offreTest.title);\nconsole.log('🎯 Résultat attendu:', offreTest.attendu);\n\nreturn [\n  {\n    json: {\n      ...offreTest,\n      test_type: 'HUGGINGFACE_LLAMA',\n      api_url: 'https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf',\n      prompt: promptSimple,\n      headers: {\n        'Content-Type': 'application/json'\n        // Pas de clé requise pour test basique\n      }\n    }\n  },\n  {\n    json: {\n      ...offreTest,\n      test_type: 'OPENAI_COMPATIBLE',\n      api_url: 'https://api.openai.com/v1/chat/completions',\n      payload_string: JSON.stringify(payloadOpenAI),\n      headers: {\n        'Content-Type': 'application/json',\n        'Authorization': 'Bearer REMPLACER_PAR_CLE_OPENAI'\n      },\n      note: 'Remplacer la clé OpenAI si disponible'\n    }\n  }\n];"
+      },
+      "id": "generate-alternatives",
+      "name": "🆓 Générer Alternatives",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-hf",
+              "leftValue": "={{ $json.test_type }}",
+              "rightValue": "HUGGINGFACE_LLAMA",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-by-type",
+      "name": "Type de test ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.api_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={\"inputs\": \"{{ $json.prompt }}\", \"parameters\": {\"max_new_tokens\": 50, \"temperature\": 0.1}}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "test-huggingface",
+      "name": "🤗 Test HuggingFace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// SIMULATION LOCALE SI API ÉCHOUE\nconst offre = $('🆓 Générer Alternatives').item.json;\n\nconsole.log('💻 === SIMULATION LOCALE ===');\nconsole.log('🎯 Offre:', offre.title);\n\n// LOGIQUE DE CLASSIFICATION BASIQUE\nlet classification = 'INCERTAIN';\nlet confidence = 0.5;\nlet justification = 'Classification automatique locale';\n\n// Mots-clés positifs\nconst motsAlternance = ['apprentissage', 'alternance', 'contrat pro', 'formation'];\nconst motsCyber = ['cybersécurité', 'cyber', 'sécurité informatique', 'SOC', 'SIEM', 'pentest'];\n\n// Mots-clés négatifs  \nconst motsNegatifs = ['stage', 'cdi', 'cdd', 'freelance', 'marketing', 'commercial'];\n\nconst texteComplet = `${offre.title} ${offre.description} ${offre.contract_type}`.toLowerCase();\n\n// Vérification alternance\nconst hasAlternance = motsAlternance.some(mot => texteComplet.includes(mot.toLowerCase()));\nconst hasCyber = motsCyber.some(mot => texteComplet.includes(mot.toLowerCase()));\nconst hasNegatif = motsNegatifs.some(mot => texteComplet.includes(mot.toLowerCase()));\n\nif (hasAlternance && hasCyber && !hasNegatif) {\n  classification = 'VALIDE';\n  confidence = 0.85;\n  justification = 'Contrat alternance + domaine cybersécurité détectés';\n} else if (hasNegatif) {\n  classification = 'INVALIDE';\n  confidence = 0.9;\n  justification = 'Mots-clés exclusifs détectés';\n} else if (!hasAlternance) {\n  classification = 'INVALIDE';\n  confidence = 0.8;\n  justification = 'Pas de contrat alternance détecté';\n} else if (!hasCyber) {\n  classification = 'INVALIDE';\n  confidence = 0.8;\n  justification = 'Domaine cybersécurité non détecté';\n}\n\nconst isCorrect = classification === offre.attendu;\n\nconsole.log(`📊 Classification: ${classification}`);\nconsole.log(`🎯 Attendu: ${offre.attendu}, Correct: ${isCorrect}`);\nconsole.log(`💡 Justification: ${justification}`);\n\nreturn {\n  json: {\n    ...offre,\n    classification_result: {\n      method: 'CLASSIFICATION_LOCALE',\n      classification: classification,\n      confidence: confidence,\n      justification: justification,\n      is_correct: isCorrect,\n      mots_detectes: {\n        alternance: hasAlternance,\n        cybersecurite: hasCyber,\n        negatifs: hasNegatif\n      }\n    },\n    processed_at: new Date().toISOString(),\n    note: 'Classification locale en attendant API LLM fonctionnelle'\n  }\n};"
+      },
+      "id": "simulation-locale",
+      "name": "💻 Simulation Locale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT RÉPONSE HUGGINGFACE\nconst originalData = $('🆓 Générer Alternatives').item.json;\nconst apiResponse = $input.item.json;\n\nconsole.log('🤗 === RÉPONSE HUGGINGFACE ===');\nconsole.log('📊 Réponse brute:', JSON.stringify(apiResponse, null, 2));\n\nlet classification = 'ERREUR';\nlet confidence = 0;\nlet justification = 'Erreur API';\n\nif (apiResponse && Array.isArray(apiResponse) && apiResponse[0] && apiResponse[0].generated_text) {\n  const reponse = apiResponse[0].generated_text.toLowerCase();\n  console.log('📝 Texte généré:', reponse);\n  \n  if (reponse.includes('valide') && !reponse.includes('invalide')) {\n    classification = 'VALIDE';\n    confidence = 0.7;\n    justification = 'HuggingFace a classé comme valide';\n  } else if (reponse.includes('invalide')) {\n    classification = 'INVALIDE';\n    confidence = 0.7;\n    justification = 'HuggingFace a classé comme invalide';\n  } else {\n    classification = 'INCERTAIN';\n    confidence = 0.3;\n    justification = 'Réponse HuggingFace ambiguë';\n  }\n} else {\n  console.log('❌ Structure réponse invalide');\n}\n\nconst isCorrect = classification === originalData.attendu;\n\nreturn {\n  json: {\n    ...originalData,\n    classification_result: {\n      method: 'HUGGINGFACE_API',\n      classification: classification,\n      confidence: confidence,\n      justification: justification,\n      is_correct: isCorrect,\n      raw_response: apiResponse\n    },\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-hf-response",
+      "name": "🤗 Traiter Réponse HF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result-summary",
+              "name": "summary",
+              "value": "🧪 TEST: {{ $json.classification_result.classification }} ({{ $json.classification_result.method }})",
+              "type": "string"
+            },
+            {
+              "id": "result-accuracy",
+              "name": "accuracy",
+              "value": "Attendu: {{ $json.attendu }}, Obtenu: {{ $json.classification_result.classification }}, Correct: {{ $json.classification_result.is_correct }}",
+              "type": "string"
+            },
+            {
+              "id": "result-confidence",
+              "name": "confidence",
+              "value": "={{ $json.classification_result.confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "result-justification",
+              "name": "justification",
+              "value": "{{ $json.classification_result.justification }}",
+              "type": "string"
+            },
+            {
+              "id": "result-recommendation",
+              "name": "recommendation",
+              "value": "{{ $json.classification_result.is_correct ? '✅ Méthode fiable' : '⚠️ Nécessite ajustement' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-final-result",
+      "name": "📊 Résultat Final",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1340, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🆓 Générer Alternatives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🆓 Générer Alternatives": {
+      "main": [
+        [
+          {
+            "node": "Type de test ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Type de test ?": {
+      "main": [
+        [
+          {
+            "node": "🤗 Test HuggingFace",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "💻 Simulation Locale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤗 Test HuggingFace": {
+      "main": [
+        [
+          {
+            "node": "🤗 Traiter Réponse HF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "💻 Simulation Locale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💻 Simulation Locale": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤗 Traiter Réponse HF": {
+      "main": [
+        [
+          {
+            "node": "📊 Résultat Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "alternative-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-alternative-gratuite",
+  "tags": ["test", "alternative", "gratuit", "huggingface"]
+}

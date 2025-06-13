@@ -1,0 +1,286 @@
+{
+  "name": "Test API Réelle - La Bonne Alternance",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-test-lba",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://labonnealternance.pole-emploi.fr/api/v1/jobs/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "48.8566"
+            },
+            {
+              "name": "longitude",
+              "value": "2.3522"
+            },
+            {
+              "name": "radius",
+              "value": "50"
+            },
+            {
+              "name": "romes",
+              "value": "M1802,M1810"
+            },
+            {
+              "name": "caller",
+              "value": "n8n-test-cybersecurity"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-lba-api-real",
+      "name": "🌐 Test API LBA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE RÉPONSE API LA BONNE ALTERNANCE RÉELLE\nconst apiResponse = $input.item.json;\n\nconsole.log('📊 === ANALYSE RÉPONSE LBA RÉELLE ===');\nconsole.log('🔍 Structure complète:', JSON.stringify(apiResponse, null, 2));\n\n// Analyser la structure\nlet analysisResult = {\n  success: false,\n  structure_analysis: {},\n  offers_found: 0,\n  sample_offers: [],\n  next_steps: []\n};\n\nif (apiResponse && typeof apiResponse === 'object') {\n  console.log('✅ Réponse JSON valide reçue');\n  \n  // Analyser les propriétés principales\n  const mainKeys = Object.keys(apiResponse);\n  console.log('🔑 Clés principales:', mainKeys);\n  \n  analysisResult.structure_analysis = {\n    main_keys: mainKeys,\n    has_jobs_array: Array.isArray(apiResponse.jobs),\n    has_results_array: Array.isArray(apiResponse.results),\n    has_data_array: Array.isArray(apiResponse.data),\n    total_properties: mainKeys.length\n  };\n  \n  // Chercher le tableau d'offres\n  let offersArray = null;\n  let offersKey = null;\n  \n  if (Array.isArray(apiResponse.jobs)) {\n    offersArray = apiResponse.jobs;\n    offersKey = 'jobs';\n  } else if (Array.isArray(apiResponse.results)) {\n    offersArray = apiResponse.results;\n    offersKey = 'results';\n  } else if (Array.isArray(apiResponse.data)) {\n    offersArray = apiResponse.data;\n    offersKey = 'data';\n  } else if (Array.isArray(apiResponse.offres)) {\n    offersArray = apiResponse.offres;\n    offersKey = 'offres';\n  }\n  \n  if (offersArray) {\n    console.log(`📋 Tableau d'offres trouvé: ${offersKey} (${offersArray.length} items)`);\n    analysisResult.offers_found = offersArray.length;\n    analysisResult.offers_key = offersKey;\n    \n    // Analyser 2-3 offres exemple\n    const sampleSize = Math.min(3, offersArray.length);\n    for (let i = 0; i < sampleSize; i++) {\n      const offer = offersArray[i];\n      console.log(`📄 Offre ${i + 1}:`, JSON.stringify(offer, null, 2));\n      \n      analysisResult.sample_offers.push({\n        index: i,\n        keys: Object.keys(offer),\n        title: offer.title || offer.intitule || offer.libelle || 'Titre non trouvé',\n        company: offer.company?.name || offer.entreprise?.nom || offer.entreprise?.raison_sociale || 'Entreprise non trouvée',\n        location: offer.lieu || offer.place || offer.localisation || 'Lieu non trouvé',\n        full_object: offer\n      });\n    }\n    \n    analysisResult.success = true;\n    analysisResult.next_steps = [\n      'Adapter le workflow de traitement',\n      'Mapper les champs vers format unifié',\n      'Tester classification Mistral',\n      'Implémenter filtrage cybersécurité'\n    ];\n  } else {\n    console.log('⚠️ Aucun tableau d\\'offres identifié');\n    analysisResult.next_steps = [\n      'Vérifier la documentation API LBA',\n      'Tester avec différents paramètres',\n      'Contacter support API si nécessaire'\n    ];\n  }\n} else {\n  console.log('❌ Réponse invalide ou vide');\n  analysisResult.error = 'Réponse API invalide';\n  analysisResult.next_steps = [\n    'Vérifier URL API',\n    'Vérifier paramètres de requête',\n    'Tester avec curl direct'\n  ];\n}\n\nconsole.log('🎯 Résultat analyse:', analysisResult.success ? 'SUCCÈS' : 'ÉCHEC');\nconsole.log('📊 Offres trouvées:', analysisResult.offers_found);\n\nreturn {\n  json: {\n    test_name: 'LBA API Real Test',\n    test_timestamp: new Date().toISOString(),\n    api_endpoint: 'https://labonnealternance.pole-emploi.fr/api/v1/jobs/search',\n    search_params: {\n      latitude: 48.8566,\n      longitude: 2.3522,\n      radius: 50,\n      romes: 'M1802,M1810',\n      caller: 'n8n-test-cybersecurity'\n    },\n    analysis_result: analysisResult,\n    raw_response: apiResponse\n  }\n};"
+      },
+      "id": "analyze-lba-response",
+      "name": "📊 Analyser Réponse LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE ERREUR API LA BONNE ALTERNANCE\nconst errorData = $input.item;\n\nconsole.log('❌ === ERREUR API LBA RÉELLE ===');\nconsole.log('🔍 Code erreur HTTP:', errorData.httpCode);\nconsole.log('📋 Message:', errorData.message);\nconsole.log('🌐 URL tentée:', errorData.config?.url);\nconsole.log('📊 Détails complets:', JSON.stringify(errorData, null, 2));\n\n// Analyse de l'erreur\nlet errorAnalysis = {\n  error_type: 'UNKNOWN',\n  probable_cause: 'Indéterminée',\n  suggested_fixes: [],\n  is_api_available: false,\n  retry_recommended: false\n};\n\nswitch(errorData.httpCode) {\n  case 400:\n    errorAnalysis = {\n      error_type: 'BAD_REQUEST',\n      probable_cause: 'Paramètres de requête invalides',\n      suggested_fixes: [\n        'Vérifier format latitude/longitude',\n        'Vérifier codes ROME valides',\n        'Tester avec paramètres minimaux'\n      ],\n      is_api_available: true,\n      retry_recommended: true\n    };\n    break;\n    \n  case 404:\n    errorAnalysis = {\n      error_type: 'NOT_FOUND',\n      probable_cause: 'Endpoint API modifié ou supprimé',\n      suggested_fixes: [\n        'Vérifier documentation API LBA',\n        'Tester URL alternative',\n        'Contacter support LBA'\n      ],\n      is_api_available: false,\n      retry_recommended: false\n    };\n    break;\n    \n  case 403:\n    errorAnalysis = {\n      error_type: 'FORBIDDEN',\n      probable_cause: 'Accès non autorisé',\n      suggested_fixes: [\n        'Vérifier si authentification requise',\n        'Modifier User-Agent',\n        'Respecter rate limiting'\n      ],\n      is_api_available: true,\n      retry_recommended: true\n    };\n    break;\n    \n  case 429:\n    errorAnalysis = {\n      error_type: 'RATE_LIMITED',\n      probable_cause: 'Trop de requêtes',\n      suggested_fixes: [\n        'Attendre avant retry',\n        'Implémenter rate limiting',\n        'Espacer les requêtes'\n      ],\n      is_api_available: true,\n      retry_recommended: true\n    };\n    break;\n    \n  case 500:\n  case 502:\n  case 503:\n    errorAnalysis = {\n      error_type: 'SERVER_ERROR',\n      probable_cause: 'Problème serveur LBA',\n      suggested_fixes: [\n        'Réessayer plus tard',\n        'Vérifier status page LBA',\n        'Utiliser source alternative temporairement'\n      ],\n      is_api_available: false,\n      retry_recommended: true\n    };\n    break;\n    \n  default:\n    if (!errorData.httpCode) {\n      errorAnalysis = {\n        error_type: 'NETWORK_ERROR',\n        probable_cause: 'Problème réseau ou timeout',\n        suggested_fixes: [\n          'Vérifier connexion internet',\n          'Augmenter timeout',\n          'Tester avec proxy si nécessaire'\n        ],\n        is_api_available: false,\n        retry_recommended: true\n      };\n    }\n}\n\nconsole.log('🔍 Type erreur identifié:', errorAnalysis.error_type);\nconsole.log('💡 Cause probable:', errorAnalysis.probable_cause);\nconsole.log('🛠️ Solutions suggérées:', errorAnalysis.suggested_fixes);\n\nreturn {\n  json: {\n    test_name: 'LBA API Real Test - ERROR',\n    test_timestamp: new Date().toISOString(),\n    error_details: {\n      http_code: errorData.httpCode,\n      message: errorData.message,\n      url: errorData.config?.url,\n      analysis: errorAnalysis\n    },\n    investigation_needed: !errorAnalysis.is_api_available,\n    next_actions: errorAnalysis.suggested_fixes,\n    raw_error: errorData\n  }\n};"
+      },
+      "id": "analyze-lba-error",
+      "name": "❌ Analyser Erreur LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-offers-found",
+              "leftValue": "={{ $json.analysis_result.offers_found }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-offers-found",
+      "name": "🔍 Offres Trouvées ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "success-status",
+              "name": "status",
+              "value": "API_LBA_FUNCTIONAL",
+              "type": "string"
+            },
+            {
+              "id": "success-offers",
+              "name": "offers_count",
+              "value": "={{ $json.analysis_result.offers_found }}",
+              "type": "number"
+            },
+            {
+              "id": "success-endpoint",
+              "name": "working_endpoint",
+              "value": "{{ $json.api_endpoint }}",
+              "type": "string"
+            },
+            {
+              "id": "success-structure",
+              "name": "data_structure",
+              "value": "{{ $json.analysis_result.offers_key }}",
+              "type": "string"
+            },
+            {
+              "id": "success-samples",
+              "name": "sample_offers",
+              "value": "={{ JSON.stringify($json.analysis_result.sample_offers) }}",
+              "type": "string"
+            },
+            {
+              "id": "success-next",
+              "name": "next_steps",
+              "value": "{{ $json.analysis_result.next_steps.join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "success-summary",
+              "name": "summary",
+              "value": "✅ API La Bonne Alternance fonctionnelle - {{ $json.analysis_result.offers_found }} offres trouvées",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-success-result",
+      "name": "✅ API Fonctionnelle",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fail-status",
+              "name": "status",
+              "value": "API_LBA_NOT_WORKING",
+              "type": "string"
+            },
+            {
+              "id": "fail-reason",
+              "name": "failure_reason",
+              "value": "Aucune offre trouvée ou structure invalide",
+              "type": "string"
+            },
+            {
+              "id": "fail-structure",
+              "name": "response_structure",
+              "value": "={{ JSON.stringify($json.analysis_result.structure_analysis) }}",
+              "type": "string"
+            },
+            {
+              "id": "fail-actions",
+              "name": "required_actions",
+              "value": "{{ $json.analysis_result.next_steps.join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "fail-summary",
+              "name": "summary",
+              "value": "❌ API La Bonne Alternance - Problème de structure ou absence de données",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-fail-result",
+      "name": "❌ API Problématique",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🌐 Test API LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Test API LBA": {
+      "main": [
+        [
+          {
+            "node": "📊 Analyser Réponse LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Analyser Erreur LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Analyser Réponse LBA": {
+      "main": [
+        [
+          {
+            "node": "🔍 Offres Trouvées ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Analyser Erreur LBA": {
+      "main": [
+        [
+          {
+            "node": "🔍 Offres Trouvées ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Offres Trouvées ?": {
+      "main": [
+        [
+          {
+            "node": "✅ API Fonctionnelle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ API Problématique",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-test-lba",
+  "tags": ["test", "lba"]
+}

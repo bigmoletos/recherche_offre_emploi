@@ -1,0 +1,68 @@
+{
+  "name": "Test Variables Environnement",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "test-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "test_env_mistral",
+              "value": "{{$env.mistral_key_site_emploi}}"
+            },
+            {
+              "name": "test_env_cursor",
+              "value": "{{$env.MISTRAL_API_KEY_CURSOR_MCP_SERVER}}"
+            },
+            {
+              "name": "authorization_header",
+              "value": "Bearer {{$env.mistral_key_site_emploi}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "{{$now}}"
+            }
+          ]
+        }
+      },
+      "id": "test-variables",
+      "name": "Test Variables",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Test Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "id": "test-env",
+      "name": "test-env"
+    }
+  ]
+}

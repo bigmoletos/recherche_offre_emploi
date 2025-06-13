@@ -1,0 +1,344 @@
+{
+  "name": "Scraping + Classification Mistral - COMPLET",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-scraping-complet",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CONFIGURATION MULTI-SITES POUR ALTERNANCE CYBERSÉCURITÉ\nconsole.log('🔧 === CONFIGURATION SCRAPING MULTI-SITES ===');\n\n// Mots-clés de recherche pour cybersécurité\nconst keywordsCyber = [\n  'cybersécurité', 'cybersecurity', 'sécurité informatique', \n  'SOC', 'SIEM', 'pentest', 'pentesting', 'analyste sécurité',\n  'incident response', 'threat intelligence', 'cyber analyst',\n  'security engineer', 'forensic', 'malware', 'vulnerability'\n];\n\n// Configuration des sites à scraper\nconst sitesConfig = [\n  {\n    name: 'France Travail',\n    baseUrl: 'https://www.francetravail.fr',\n    searchUrl: 'https://candidat.francetravail.fr/offres/recherche?lieux=11R&motsCles={keywords}&offresPartenaires=true&range=0-19&ray=20&tri=0',\n    type: 'api',\n    enabled: true,\n    priority: 1\n  },\n  {\n    name: 'La Bonne Alternance',\n    baseUrl: 'https://labonnealternance.pole-emploi.fr',\n    searchUrl: 'https://labonnealternance.pole-emploi.fr/api/v1/jobs/search?romes=M1802,M1810&latitude=48.866667&longitude=2.333333&radius=30&caller=labonnealternance',\n    type: 'api',\n    enabled: true,\n    priority: 2\n  },\n  {\n    name: 'Indeed',\n    baseUrl: 'https://fr.indeed.com',\n    searchUrl: 'https://fr.indeed.com/jobs?q={keywords}+alternance&l=France&radius=50&sort=date',\n    type: 'html',\n    enabled: true,\n    priority: 3\n  },\n  {\n    name: 'APEC',\n    baseUrl: 'https://www.apec.fr',\n    searchUrl: 'https://www.apec.fr/candidat/recherche-emploi.html/emploi?motsCles={keywords}&typeContrat=132810',\n    type: 'html',\n    enabled: true,\n    priority: 4\n  },\n  {\n    name: 'Walt Community',\n    baseUrl: 'https://walt.community',\n    searchUrl: 'https://walt.community/api/jobs?search={keywords}&type=alternance',\n    type: 'api',\n    enabled: true,\n    priority: 5\n  }\n];\n\nconsole.log('🎯 Sites configurés:', sitesConfig.length);\nconsole.log('🔑 Mots-clés cybersécurité:', keywordsCyber.slice(0, 5).join(', '), '...');\n\n// Génération des URLs de recherche\nconst searchTargets = [];\nsitesConfig.forEach(site => {\n  if (site.enabled) {\n    // Combiner plusieurs mots-clés pour une recherche plus large\n    const mainKeywords = ['cybersécurité', 'sécurité informatique', 'SOC analyst'];\n    mainKeywords.forEach(keyword => {\n      const searchUrl = site.searchUrl.replace('{keywords}', encodeURIComponent(keyword));\n      searchTargets.push({\n        site_name: site.name,\n        site_type: site.type,\n        search_keyword: keyword,\n        search_url: searchUrl,\n        priority: site.priority,\n        timestamp: new Date().toISOString()\n      });\n    });\n  }\n});\n\nconsole.log('📋 URLs de recherche générées:', searchTargets.length);\nsearchTargets.forEach((target, index) => {\n  console.log(`${index + 1}. ${target.site_name} - ${target.search_keyword}`);\n});\n\nreturn searchTargets.map(target => ({ json: target }));"
+      },
+      "id": "config-sites",
+      "name": "🔧 Configuration Sites",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// SIMULATION DE DONNÉES RÉALISTES EN ATTENDANT LE SCRAPING\nconst target = $input.item.json;\n\nconsole.log(`🌐 === SCRAPING SIMULÉ: ${target.site_name} ===`);\nconsole.log('🔑 Mot-clé:', target.search_keyword);\nconsole.log('🔗 URL:', target.search_url);\n\n// Pour la démo, on génère des offres réalistes par site\nconst offresBysite = {\n  'France Travail': [\n    {\n      title: 'Contrat d\\'apprentissage - Analyste Cybersécurité Junior',\n      company: 'ANSSI',\n      description: 'Formation en alternance de 24 mois pour devenir analyste cybersécurité. Missions : monitoring SOC, analyse d\\'incidents, veille sécurité.',\n      contract_type: 'Contrat d\\'apprentissage',\n      location: 'Paris, France',\n      url: 'https://candidat.francetravail.fr/offres/132456789',\n      date_posted: '2025-06-04',\n      salary: '1200-1500€',\n      source: 'France Travail'\n    }\n  ],\n  'La Bonne Alternance': [\n    {\n      title: 'Alternance - Technicien Support IT',\n      company: 'Orange Business',\n      description: 'Contrat de professionnalisation pour support technique niveau 2. Environnement Microsoft, gestion des incidents.',\n      contract_type: 'Contrat de professionnalisation', \n      location: 'Lyon, France',\n      url: 'https://labonnealternance.pole-emploi.fr/detail/987654321',\n      date_posted: '2025-06-03',\n      salary: '1100-1400€',\n      source: 'La Bonne Alternance'\n    }\n  ],\n  'Indeed': [\n    {\n      title: 'Stage - Assistant Marketing Digital',\n      company: 'StartupTech',\n      description: 'Stage de 6 mois en marketing digital. Création de contenu, gestion réseaux sociaux, campagnes publicitaires.',\n      contract_type: 'Stage',\n      location: 'Marseille, France',\n      url: 'https://fr.indeed.com/voir-emploi?jk=abc123def456',\n      date_posted: '2025-06-02',\n      salary: '600€',\n      source: 'Indeed'\n    }\n  ],\n  'APEC': [\n    {\n      title: 'Ingénieur Cybersécurité Senior - CDI',\n      company: 'Thales Group',\n      description: 'Poste d\\'ingénieur cybersécurité senior avec 5+ années d\\'expérience. Architecture sécurité, management d\\'équipe.',\n      contract_type: 'CDI',\n      location: 'Toulouse, France',\n      url: 'https://www.apec.fr/offres-emploi-cadres/0123456789.html',\n      date_posted: '2025-06-01',\n      salary: '55000-70000€',\n      source: 'APEC'\n    }\n  ],\n  'Walt Community': [\n    {\n      title: 'Apprentissage - Développeur Cybersécurité',\n      company: 'CyberDefense Corp',\n      description: 'Contrat d\\'apprentissage en développement d\\'outils de cybersécurité. Technologies: Python, React, Docker.',\n      contract_type: 'Contrat d\\'apprentissage',\n      location: 'Nantes, France',\n      url: 'https://walt.community/jobs/cyber-dev-apprentice-2025',\n      date_posted: '2025-06-05',\n      salary: '1300-1600€',\n      source: 'Walt Community'\n    }\n  ]\n};\n\n// Récupérer les offres pour ce site\nconst offres = offresBysite[target.site_name] || [];\n\nconsole.log(`📋 Offres trouvées pour ${target.site_name}:`, offres.length);\n\nif (offres.length === 0) {\n  console.log('⚠️ Aucune offre trouvée pour ce site');\n  return {\n    json: {\n      ...target,\n      offers_found: 0,\n      offers: [],\n      scraping_status: 'NO_RESULTS',\n      scraped_at: new Date().toISOString()\n    }\n  };\n}\n\n// Enrichir chaque offre avec les métadonnées de recherche\nconst enrichedOffers = offres.map((offre, index) => {\n  return {\n    ...offre,\n    offer_id: `${target.site_name.toLowerCase().replace(/\\s+/g, '-')}-${Date.now()}-${index}`,\n    search_keyword: target.search_keyword,\n    scraped_from: target.site_name,\n    scraped_at: new Date().toISOString(),\n    // Classification attendue basée sur le contenu\n    expected_classification: (\n      (offre.contract_type.toLowerCase().includes('apprentissage') || \n       offre.contract_type.toLowerCase().includes('alternance') ||\n       offre.contract_type.toLowerCase().includes('professionnalisation')) &&\n      (offre.title.toLowerCase().includes('cyber') ||\n       offre.title.toLowerCase().includes('sécurité') ||\n       offre.description.toLowerCase().includes('cyber') ||\n       offre.description.toLowerCase().includes('sécurité'))\n    ) ? 'VALIDE' : 'INVALIDE'\n  };\n});\n\nconsole.log('✅ Offres enrichies:', enrichedOffers.length);\nenrichedOffers.forEach((offre, index) => {\n  console.log(`${index + 1}. ${offre.title} → ${offre.expected_classification}`);\n});\n\nreturn {\n  json: {\n    ...target,\n    offers_found: enrichedOffers.length,\n    offers: enrichedOffers,\n    scraping_status: 'SUCCESS',\n    scraped_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "scraper-simulator",
+      "name": "🌐 Scraper Simulé",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// EXTRACTION ET PRÉPARATION DES OFFRES POUR CLASSIFICATION\nconst scrapingResult = $input.item.json;\n\nconsole.log(`📊 === EXTRACTION OFFRES: ${scrapingResult.site_name} ===`);\nconsole.log('📋 Offres trouvées:', scrapingResult.offers_found);\n\nif (scrapingResult.offers_found === 0) {\n  console.log('⚠️ Aucune offre à extraire');\n  return [];\n}\n\n// Extraire chaque offre individuellement pour traitement\nconst extractedOffers = scrapingResult.offers.map((offre, index) => {\n  console.log(`📄 Extraction offre ${index + 1}: ${offre.title}`);\n  \n  return {\n    // Données originales de l'offre\n    ...offre,\n    \n    // Métadonnées de scraping\n    scraped_from_site: scrapingResult.site_name,\n    search_context: {\n      keyword: scrapingResult.search_keyword,\n      url: scrapingResult.search_url,\n      scraped_at: scrapingResult.scraped_at\n    },\n    \n    // Préparation pour classification\n    ready_for_classification: true,\n    processing_step: 'EXTRACTED',\n    extracted_at: new Date().toISOString()\n  };\n});\n\nconsole.log('✅ Offres extraites:', extractedOffers.length);\n\nreturn extractedOffers.map(offre => ({ json: offre }));"
+      },
+      "id": "extract-offers",
+      "name": "📄 Extraire Offres",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PRÉPARATION PAYLOAD MISTRAL POUR CLASSIFICATION\nconst offre = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION MISTRAL: ${offre.title} ===`);\nconsole.log('🏢 Entreprise:', offre.company);\nconsole.log('📍 Lieu:', offre.location);\nconsole.log('💼 Type contrat:', offre.contract_type);\nconsole.log('🎯 Classification attendue:', offre.expected_classification);\n\n// Prompt optimisé pour la classification d'alternance cybersécurité\nconst prompt = `ANALYSE CETTE OFFRE D'EMPLOI POUR ALTERNANCE CYBERSÉCURITÉ :\n\nTITRE: ${offre.title}\nENTREPRISE: ${offre.company}\nTYPE DE CONTRAT: ${offre.contract_type}\nLIEU: ${offre.location}\nDESCRIPTION: ${offre.description}\n\nCRITÈRES DE VALIDATION ALTERNANCE CYBERSÉCURITÉ :\n1. CONTRAT = apprentissage OU alternance OU contrat de professionnalisation\n2. DOMAINE = cybersécurité OU sécurité informatique OU SOC OU pentest\n\nATTENTION :\n- Exclure : stages, CDI, CDD, freelance\n- Exclure : marketing, commercial, RH (même si mention \"cyber\")\n- Inclure : formation, junior, débutant en cyber\n\nRÉPONDS EXACTEMENT :\n- CLASSIFICATION: VALIDE (si les 2 critères sont remplis)\n- CLASSIFICATION: INVALIDE (sinon)\n- JUSTIFICATION: [raison courte]`;\n\nconst payload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert en classification d'offres d'alternance cybersécurité. Tu réponds toujours avec le format exact demandé.\"\n    },\n    {\n      role: \"user\",\n      content: prompt\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 150\n};\n\nconsole.log('📋 Payload Mistral créé');\n\nreturn {\n  json: {\n    ...offre,\n    mistral_payload: JSON.stringify(payload),\n    prompt_used: prompt,\n    ready_for_mistral: true,\n    prepared_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "prepare-mistral",
+      "name": "🤖 Préparer Mistral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.mistral_payload }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-mistral-classification",
+      "name": "🌐 Classification Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT SUCCÈS CLASSIFICATION\nconst originalOffer = $('🤖 Préparer Mistral').item.json;\nconst mistralResponse = $input.item.json;\n\nconsole.log(`✅ === CLASSIFICATION RÉUSSIE: ${originalOffer.title} ===`);\nconsole.log('🎯 Classification attendue:', originalOffer.expected_classification);\n\nif (mistralResponse.choices && mistralResponse.choices[0] && mistralResponse.choices[0].message) {\n  const content = mistralResponse.choices[0].message.content.trim();\n  console.log('📝 Réponse Mistral:', content);\n\n  // Extraction de la classification avec regex robuste\n  let classification = 'INCERTAIN';\n  let justification = 'Non trouvée';\n  \n  // Recherche pattern CLASSIFICATION\n  const classificationMatch = content.match(/CLASSIFICATION:\\s*(VALIDE|INVALIDE)/i);\n  if (classificationMatch) {\n    classification = classificationMatch[1].toUpperCase();\n  }\n  \n  // Recherche justification\n  const justificationMatch = content.match(/JUSTIFICATION:\\s*([^\\n]+)/i);\n  if (justificationMatch) {\n    justification = justificationMatch[1].trim();\n  }\n  \n  console.log('🔍 Classification extraite:', classification);\n  console.log('📋 Justification:', justification);\n  \n  // Vérification de la précision\n  const isCorrect = classification === originalOffer.expected_classification;\n  const confidence = classificationMatch ? 0.9 : 0.5;\n  \n  console.log(`🎯 Prédiction correcte: ${isCorrect}`);\n  \n  return {\n    json: {\n      // Données originales de l'offre\n      offer_id: originalOffer.offer_id,\n      title: originalOffer.title,\n      company: originalOffer.company,\n      description: originalOffer.description,\n      contract_type: originalOffer.contract_type,\n      location: originalOffer.location,\n      salary: originalOffer.salary,\n      url: originalOffer.url,\n      source: originalOffer.source,\n      \n      // Métadonnées de scraping\n      scraped_from: originalOffer.scraped_from_site,\n      search_keyword: originalOffer.search_context.keyword,\n      \n      // Résultats de classification\n      mistral_classification: classification,\n      mistral_justification: justification,\n      mistral_raw_response: content,\n      expected_classification: originalOffer.expected_classification,\n      is_prediction_correct: isCorrect,\n      confidence_score: confidence,\n      \n      // Métadonnées de traitement\n      model_used: mistralResponse.model,\n      tokens_used: mistralResponse.usage,\n      processed_at: new Date().toISOString(),\n      status: 'CLASSIFIED_SUCCESS',\n      \n      // Marqueurs pour filtrage\n      is_valid_offer: classification === 'VALIDE',\n      is_alternance: ['apprentissage', 'alternance', 'professionnalisation'].some(type => \n        originalOffer.contract_type.toLowerCase().includes(type)\n      ),\n      is_cybersecurity: ['cyber', 'sécurité', 'security', 'soc'].some(keyword =>\n        (originalOffer.title + ' ' + originalOffer.description).toLowerCase().includes(keyword)\n      )\n    }\n  };\n} else {\n  console.log('❌ Structure réponse Mistral invalide');\n  return {\n    json: {\n      ...originalOffer,\n      mistral_classification: 'ERREUR_STRUCTURE',\n      mistral_justification: 'Réponse API malformée',\n      is_prediction_correct: false,\n      confidence_score: 0,\n      status: 'CLASSIFICATION_ERROR',\n      processed_at: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "id": "process-classification-success",
+      "name": "✅ Traiter Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT ERREUR CLASSIFICATION\nconst originalOffer = $('🤖 Préparer Mistral').item.json;\nconst errorData = $input.item;\n\nconsole.log(`❌ === ERREUR CLASSIFICATION: ${originalOffer.title} ===`);\nconsole.log('🔍 Code erreur:', errorData.httpCode);\nconsole.log('📋 Message:', errorData.message);\n\n// Analyse du type d'erreur\nlet errorType = 'UNKNOWN';\nlet suggestion = 'Réessayer plus tard';\n\nswitch(errorData.httpCode) {\n  case 401:\n    errorType = 'AUTH_ERROR';\n    suggestion = 'Vérifier la clé API Mistral';\n    break;\n  case 422:\n    errorType = 'VALIDATION_ERROR';\n    suggestion = 'Vérifier le format du payload';\n    break;\n  case 429:\n    errorType = 'RATE_LIMIT';\n    suggestion = 'Attendre avant de réessayer';\n    break;\n  case 500:\n    errorType = 'SERVER_ERROR';\n    suggestion = 'Problème serveur Mistral';\n    break;\n}\n\nconsole.log('🏷️ Type erreur:', errorType);\nconsole.log('💡 Suggestion:', suggestion);\n\nreturn {\n  json: {\n    // Données originales\n    offer_id: originalOffer.offer_id,\n    title: originalOffer.title,\n    company: originalOffer.company,\n    source: originalOffer.source,\n    \n    // Erreur de classification\n    mistral_classification: 'ERREUR_API',\n    mistral_justification: `Erreur ${errorType}: ${errorData.message}`,\n    expected_classification: originalOffer.expected_classification,\n    is_prediction_correct: false,\n    confidence_score: 0,\n    \n    // Détails de l'erreur\n    error_type: errorType,\n    error_code: errorData.httpCode,\n    error_message: errorData.message,\n    suggestion: suggestion,\n    status: 'CLASSIFICATION_ERROR',\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-classification-error",
+      "name": "❌ Traiter Erreur",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-valid-final",
+              "leftValue": "={{ $json.mistral_classification }}",
+              "rightValue": "VALIDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-valid-offers",
+      "name": "🔍 Filtrer Offres Valides",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "final-action",
+              "name": "action",
+              "value": "OFFRE_RETENUE",
+              "type": "string"
+            },
+            {
+              "id": "final-summary",
+              "name": "summary",
+              "value": "✅ {{ $json.title }} | {{ $json.company }} | {{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "final-details",
+              "name": "details",
+              "value": "Contrat: {{ $json.contract_type }} | Lieu: {{ $json.location }} | Justification: {{ $json.mistral_justification }}",
+              "type": "string"
+            },
+            {
+              "id": "final-contact",
+              "name": "contact_url",
+              "value": "{{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "final-quality",
+              "name": "quality_score",
+              "value": "{{ $json.confidence_score }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-valid-offers",
+      "name": "✅ Offres Retenues",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2000, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "rejected-action",
+              "name": "action",
+              "value": "OFFRE_REJETEE",
+              "type": "string"
+            },
+            {
+              "id": "rejected-summary",
+              "name": "summary",
+              "value": "❌ {{ $json.title }} | {{ $json.company }} | {{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "rejected-reason",
+              "name": "rejection_reason",
+              "value": "{{ $json.mistral_classification }} - {{ $json.mistral_justification }}",
+              "type": "string"
+            },
+            {
+              "id": "rejected-contract",
+              "name": "contract_issue",
+              "value": "Type: {{ $json.contract_type }} | Attendu: alternance/apprentissage",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-rejected-offers",
+      "name": "❌ Offres Rejetées",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2000, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🔧 Configuration Sites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔧 Configuration Sites": {
+      "main": [
+        [
+          {
+            "node": "🌐 Scraper Simulé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Scraper Simulé": {
+      "main": [
+        [
+          {
+            "node": "📄 Extraire Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Extraire Offres": {
+      "main": [
+        [
+          {
+            "node": "🤖 Préparer Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Préparer Mistral": {
+      "main": [
+        [
+          {
+            "node": "🌐 Classification Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Classification Mistral": {
+      "main": [
+        [
+          {
+            "node": "✅ Traiter Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Traiter Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Traiter Classification": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrer Offres Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Traiter Erreur": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrer Offres Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Filtrer Offres Valides": {
+      "main": [
+        [
+          {
+            "node": "✅ Offres Retenues",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Offres Rejetées",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "scraping-classification-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-scraping-classification",
+  "tags": ["scraping", "classification", "production", "multi-sites"]
+}

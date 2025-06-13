@@ -1,0 +1,308 @@
+{
+  "name": "Classification Mistral - PRODUCTION CORRIGÉE",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-production-fixed",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GÉNÉRATEUR D'OFFRES TEST AVEC CORRECTIONS\nconsole.log('🧪 === GÉNÉRATION OFFRES TEST CORRIGÉES ===');\n\nconst offresTest = [\n  {\n    id: 'test-valide-1',\n    title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n    company: 'Orange Cyberdefense',\n    description: 'Contrat d\\'apprentissage de 24 mois pour former un analyste cybersécurité au sein de notre SOC. Missions : surveillance des systèmes, analyse incidents de sécurité, réponse aux alertes SIEM.',\n    location: 'Paris, France',\n    contract_type: 'Contrat d\\'apprentissage',\n    keywords: ['apprentissage', 'cybersécurité', 'SOC', 'alternance'],\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'test-invalide-1',\n    title: 'Stage - Marketing Digital et Communication',\n    company: 'AgenceComm',\n    description: 'Stage de 6 mois en marketing digital. Missions : gestion des réseaux sociaux, création de contenu, campagnes publicitaires.',\n    location: 'Lyon, France',\n    contract_type: 'Stage',\n    keywords: ['stage', 'marketing', 'digital'],\n    attendu: 'INVALIDE'\n  }\n];\n\nconsole.log('📋 Offres test générées:', offresTest.length);\noffresTest.forEach((offre, index) => {\n  console.log(`${index + 1}. ${offre.title} → ${offre.attendu}`);\n});\n\nreturn offresTest.map(offre => ({ json: offre }));"
+      },
+      "id": "generator-fixed",
+      "name": "🧪 Générateur Corrigé",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PRÉPARATION PAYLOAD MISTRAL AVEC URL CORRECTE\nconst offre = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION MISTRAL: ${offre.title} ===`);\nconsole.log('🎯 Résultat attendu:', offre.attendu);\n\nconst prompt = `ANALYSE CETTE OFFRE D'EMPLOI :\n\nTITRE: ${offre.title}\nENTREPRISE: ${offre.company}\nTYPE: ${offre.contract_type}\nDESCRIPTION: ${offre.description}\n\nCRITÈRES DE VALIDATION :\n1. CONTRAT = apprentissage OU alternance OU contrat pro\n2. DOMAINE = cybersécurité OU sécurité informatique\n\nRÉPONDS UNIQUEMENT PAR :\n- CLASSIFICATION: VALIDE (si les 2 critères sont remplis)\n- CLASSIFICATION: INVALIDE (sinon)\n- JUSTIFICATION: [explique pourquoi]`;\n\nconst payload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un classificateur précis. Tu réponds toujours avec le format exact demandé.\"\n    },\n    {\n      role: \"user\",\n      content: prompt\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 200\n};\n\nconsole.log('📋 Payload créé pour Mistral');\n\nreturn {\n  json: {\n    ...offre,\n    payload_string: JSON.stringify(payload),\n    processing_index: $itemIndex\n  }\n};"
+      },
+      "id": "prepare-payload-fixed",
+      "name": "📋 Préparer Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.payload_string }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-mistral-fixed",
+      "name": "🌐 Appel Mistral CORRIGÉ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT SUCCÈS - CLASSIFICATION AVEC TYPES CORRECTS\nconst originalData = $('📋 Préparer Payload').item.json;\nconst apiResponse = $input.item.json;\n\nconsole.log(`✅ === TRAITEMENT SUCCÈS: ${originalData.title} ===`);\nconsole.log('🎯 Résultat attendu:', originalData.attendu);\n\nif (apiResponse.choices && apiResponse.choices[0] && apiResponse.choices[0].message) {\n  const content = apiResponse.choices[0].message.content.trim();\n  console.log(`📝 Réponse Mistral:`, content);\n\n  // CLASSIFICATION AVEC GESTION STRICTE DES TYPES\n  let classification = 'INCERTAIN';\n  let confidence = 0.5; // NOMBRE, pas string\n  let isValid = false; // BOOLEAN, pas string\n  \n  // Patterns précis\n  const validPattern = /CLASSIFICATION:\\s*VALIDE/i;\n  const invalidPattern = /CLASSIFICATION:\\s*INVALIDE/i;\n  \n  if (validPattern.test(content) && !invalidPattern.test(content)) {\n    classification = 'VALIDE';\n    isValid = true;\n    confidence = 0.95;\n    console.log(`✅ CLASSÉ VALIDE`);\n  } else if (invalidPattern.test(content)) {\n    classification = 'INVALIDE';\n    isValid = false;\n    confidence = 0.95;\n    console.log(`❌ CLASSÉ INVALIDE`);\n  } else {\n    classification = 'INCERTAIN';\n    isValid = false;\n    confidence = 0.3;\n    console.log(`⚠️ CLASSIFICATION INCERTAINE`);\n  }\n\n  // Vérification avec le résultat attendu\n  const isCorrect = classification === originalData.attendu;\n  console.log(`🎯 Attendu: ${originalData.attendu}, Obtenu: ${classification}, Correct: ${isCorrect}`);\n\n  return {\n    json: {\n      ...originalData,\n      mistral_response: content,\n      classification: classification,\n      is_valid: isValid, // Boolean\n      confidence: confidence, // Number\n      is_correct: isCorrect, // Boolean\n      model_used: apiResponse.model || 'mistral-large-latest',\n      usage: apiResponse.usage || {},\n      processed_at: new Date().toISOString(),\n      status: 'SUCCESS'\n    }\n  };\n} else {\n  console.log(`❌ Structure réponse API invalide`);\n  return {\n    json: {\n      ...originalData,\n      mistral_response: 'STRUCTURE_INVALIDE',\n      classification: 'ERREUR',\n      is_valid: false, // Boolean\n      confidence: 0, // Number\n      is_correct: false, // Boolean\n      processed_at: new Date().toISOString(),\n      status: 'ERROR_STRUCTURE'\n    }\n  };\n}"
+      },
+      "id": "process-success-fixed",
+      "name": "✅ Traiter Succès",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT ERREUR - AVEC TYPES CORRECTS\nconst originalData = $('📋 Préparer Payload').item.json;\nconst errorData = $input.item;\n\nconsole.log(`❌ === ERREUR POUR: ${originalData.title} ===`);\nconsole.log('🔍 Erreur complète:', JSON.stringify(errorData, null, 2));\n\n// Analyser l'erreur spécifiquement\nlet errorType = 'UNKNOWN';\nlet suggestion = 'Vérifier manuellement';\n\nif (errorData.httpCode === 422) {\n  errorType = 'VALIDATION_ERROR';\n  if (errorData.message && errorData.message.includes('messages')) {\n    suggestion = 'Champ messages manquant dans le payload';\n  }\n} else if (errorData.httpCode === 401) {\n  errorType = 'AUTH_ERROR';\n  suggestion = 'Clé API invalide ou expirée';\n} else if (errorData.httpCode === 404) {\n  errorType = 'ENDPOINT_NOT_FOUND';\n  suggestion = 'URL API Mistral incorrecte - vérifier endpoint';\n} else if (errorData.httpCode === 429) {\n  errorType = 'RATE_LIMIT';\n  suggestion = 'Trop de requêtes, attendre et réessayer';\n}\n\nconsole.log('🏷️ Type d\\'erreur:', errorType);\nconsole.log('💡 Suggestion:', suggestion);\n\nreturn {\n  json: {\n    ...originalData,\n    mistral_response: 'ERREUR_API',\n    classification: 'ERREUR',\n    is_valid: false, // Boolean\n    confidence: 0, // Number\n    is_correct: false, // Boolean\n    error_type: errorType,\n    error_code: errorData.httpCode,\n    error_message: errorData.message,\n    suggestion: suggestion,\n    processed_at: new Date().toISOString(),\n    status: 'ERROR'\n  }\n};"
+      },
+      "id": "process-error-fixed",
+      "name": "❌ Traiter Erreur",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-valid-fixed",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "VALIDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-valid-fixed",
+      "name": "Classification ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "action-valid-fixed",
+              "name": "action",
+              "value": "OFFRE_ACCEPTEE",
+              "type": "string"
+            },
+            {
+              "id": "message-valid-fixed",
+              "name": "message",
+              "value": "✅ {{ $json.title }} - VALIDÉE",
+              "type": "string"
+            },
+            {
+              "id": "check-valid-fixed-result",
+              "name": "verification",
+              "value": "Attendu: {{ $json.attendu }}, Obtenu: {{ $json.classification }}, Correct: {{ $json.is_correct }}",
+              "type": "string"
+            },
+            {
+              "id": "summary-valid-fixed",
+              "name": "summary",
+              "value": "{{ $json.company }} | {{ $json.contract_type }} | Cybersécurité: ✅",
+              "type": "string"
+            },
+            {
+              "id": "confidence-fixed",
+              "name": "quality_score",
+              "value": "={{ $json.confidence }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "result-valid-fixed",
+      "name": "✅ Offre Valide",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "action-invalid-fixed",
+              "name": "action",
+              "value": "OFFRE_REJETEE",
+              "type": "string"
+            },
+            {
+              "id": "message-invalid-fixed",
+              "name": "message",
+              "value": "❌ {{ $json.title }} - REJETÉE ({{ $json.classification }})",
+              "type": "string"
+            },
+            {
+              "id": "check-invalid-fixed",
+              "name": "verification",
+              "value": "Attendu: {{ $json.attendu }}, Obtenu: {{ $json.classification }}, Correct: {{ $json.is_correct }}",
+              "type": "string"
+            },
+            {
+              "id": "summary-invalid-fixed",
+              "name": "summary",
+              "value": "{{ $json.company }} | {{ $json.contract_type }} | Raison: {{ $json.classification }}",
+              "type": "string"
+            },
+            {
+              "id": "confidence-rejected-fixed",
+              "name": "quality_score",
+              "value": "={{ $json.confidence }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "result-invalid-fixed",
+      "name": "❌ Offre Rejetée",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1560, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🧪 Générateur Corrigé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧪 Générateur Corrigé": {
+      "main": [
+        [
+          {
+            "node": "📋 Préparer Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Préparer Payload": {
+      "main": [
+        [
+          {
+            "node": "🌐 Appel Mistral CORRIGÉ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Appel Mistral CORRIGÉ": {
+      "main": [
+        [
+          {
+            "node": "✅ Traiter Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Traiter Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Traiter Succès": {
+      "main": [
+        [
+          {
+            "node": "Classification ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Traiter Erreur": {
+      "main": [
+        [
+          {
+            "node": "Classification ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification ?": {
+      "main": [
+        [
+          {
+            "node": "✅ Offre Valide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Offre Rejetée",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "production-fixed-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-production-fixed",
+  "tags": ["production", "fixed", "classification", "corrected"]
+}

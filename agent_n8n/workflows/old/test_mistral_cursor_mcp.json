@@ -1,0 +1,119 @@
+{
+  "name": "Test Mistral Cursor MCP - FONCTIONNEL",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Préparation du payload Mistral COMPLET\n// Utilise la configuration validée par les tests\n\nconst mistralPayload = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: \"Analyse cette offre d'emploi : Titre: Alternance Cybersécurité chez TechCorp à Paris. Cette offre correspond-elle à une alternance en cybersécurité ? Réponds uniquement par: VALIDE ou INVALIDE\"\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 50\n};\n\nconsole.log('🧪 === PAYLOAD MISTRAL CURSOR MCP ===');\nconsole.log('✅ Clé validée: MISTRAL_API_KEY_CURSOR_MCP_SERVER');\nconsole.log('✅ Endpoint: https://api.mistral.ai/v1/chat/completions');\nconsole.log('✅ Model:', mistralPayload.model);\nconsole.log('📝 Prompt:', mistralPayload.messages[0].content.substring(0, 50) + '...');\nconsole.log('📦 Payload complet:', JSON.stringify(mistralPayload, null, 2));\n\n// Retour du payload complet - N8N l'enverra tel quel\nreturn {\n  json: mistralPayload\n};"
+      },
+      "id": "preparation-payload",
+      "name": "Préparation Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "mistral-api",
+      "name": "Mistral API Cursor MCP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Analyse détaillée de la réponse Mistral\nconsole.log('🎯 === ANALYSE RÉPONSE MISTRAL CURSOR MCP ===');\nconsole.log('📊 Type réponse:', typeof $json);\nconsole.log('🔍 Clés disponibles:', Object.keys($json || {}));\n\n// Affichage de la réponse complète pour debug\nconsole.log('📋 Réponse complète:', JSON.stringify($json, null, 2));\n\n// Vérification structure OpenAI/Mistral compatible\nif ($json && $json.choices && Array.isArray($json.choices) && $json.choices.length > 0) {\n  const choice = $json.choices[0];\n  \n  if (choice.message && choice.message.content) {\n    const content = choice.message.content.trim();\n    console.log('✅ === SUCCÈS MISTRAL ===');\n    console.log('📝 Contenu brut:', content);\n    \n    // Classification intelligente\n    const contentUpper = content.toUpperCase();\n    const isValid = contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE');\n    const classification = isValid ? 'VALIDE' : 'INVALIDE';\n    \n    console.log('🔍 Classification détectée:', classification);\n    console.log('⚡ Modèle utilisé:', $json.model || 'mistral-small-latest');\n    console.log('📈 Usage:', JSON.stringify($json.usage || {}, null, 2));\n    \n    return {\n      json: {\n        success: true,\n        mistral_response: content,\n        classification: classification,\n        is_valid: isValid,\n        test_status: 'SUCCESS',\n        model_used: $json.model || 'mistral-small-latest',\n        usage: $json.usage || 'Non disponible',\n        api_key_used: 'MISTRAL_API_KEY_CURSOR_MCP_SERVER',\n        timestamp: new Date().toISOString()\n      }\n    };\n  } else {\n    console.log('❌ Message manquant dans choice');\n    console.log('🔍 Structure choice:', JSON.stringify(choice, null, 2));\n  }\n} else {\n  console.log('❌ Pas de choices dans la réponse');\n  \n  // Vérification si c'est une erreur\n  if ($json && $json.error) {\n    console.log('🚨 Erreur API:', $json.error);\n  }\n}\n\n// En cas d'erreur ou structure inattendue\nconsole.log('❌ === ÉCHEC ANALYSE ===');\nreturn {\n  json: {\n    success: false,\n    error: 'Structure de réponse Mistral invalide ou inattendue',\n    test_status: 'FAILED',\n    received_data: $json,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "analyse-reponse",
+      "name": "Analyse Réponse",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Préparation Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Payload": {
+      "main": [
+        [
+          {
+            "node": "Mistral API Cursor MCP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral API Cursor MCP": {
+      "main": [
+        [
+          {
+            "node": "Analyse Réponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-mistral-cursor-mcp-working",
+      "name": "Working Solution"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-05T06:30:00.000Z",
+  "versionId": "4.0.0"
+}

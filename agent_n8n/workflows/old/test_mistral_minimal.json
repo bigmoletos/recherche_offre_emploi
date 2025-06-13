@@ -1,0 +1,51 @@
+{
+  "name": "Test Mistral MINIMAL - Diagnostic",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Test minimal fetch dans Docker N8N\nconsole.log('🐳 === TEST MINIMAL DOCKER ===');\n\n// Test 1: Vérifier que fetch existe\ntry {\n  const fetch = require('node-fetch');\n  console.log('✅ node-fetch disponible');\n} catch (e) {\n  console.log('❌ node-fetch non disponible:', e.message);\n  return { json: { error: 'node-fetch non disponible', step: 'import' } };\n}\n\n// Test 2: Appel API simple\ntry {\n  const fetch = require('node-fetch');\n  \n  console.log('🔄 Test connectivité basique...');\n  \n  // Test ultra-simple: juste un GET sur l'API Mistral\n  const response = await fetch('https://api.mistral.ai/v1/models', {\n    method: 'GET',\n    headers: {\n      'Authorization': 'Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95'\n    },\n    timeout: 10000\n  });\n  \n  console.log('📊 Status:', response.status);\n  console.log('📊 Headers:', JSON.stringify([...response.headers.entries()]));\n  \n  if (response.ok) {\n    const data = await response.json();\n    console.log('✅ === CONNECTIVITÉ OK ===');\n    console.log('📋 Models disponibles:', data.data ? data.data.length : 'non spécifié');\n    \n    return {\n      json: {\n        success: true,\n        test: 'connectivity_ok',\n        status: response.status,\n        models_count: data.data ? data.data.length : 0,\n        next_step: 'Test POST avec payload'\n      }\n    };\n  } else {\n    const errorText = await response.text();\n    console.log('❌ Erreur connectivité:', response.status, errorText);\n    \n    return {\n      json: {\n        success: false,\n        test: 'connectivity_failed',\n        status: response.status,\n        error: errorText,\n        diagnosis: response.status === 401 ? 'API Key invalide' : 'Autre erreur API'\n      }\n    };\n  }\n  \n} catch (error) {\n  console.log('🚨 Erreur fetch:', error.message);\n  console.log('🚨 Type:', error.constructor.name);\n  \n  return {\n    json: {\n      success: false,\n      test: 'fetch_error',\n      error: error.message,\n      error_type: error.constructor.name,\n      diagnosis: 'Problème réseau Docker ou fetch()'\n    }\n  };\n}"
+      },
+      "id": "test-minimal",
+      "name": "Test Minimal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Test Minimal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-minimal",
+      "name": "Diagnostic Minimal"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-05T09:30:00.000Z",
+  "versionId": "10.0.0"
+}

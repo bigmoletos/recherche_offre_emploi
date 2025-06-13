@@ -1,0 +1,166 @@
+{
+  "name": "🔧 Mistral Production - Fix Variables ENV",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-production",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CORRECTION ACCÈS VARIABLES D'ENVIRONNEMENT N8N\nconsole.log('🔧 === FIX VARIABLES ENVIRONNEMENT ===');\n\n// MÉTHODES D'ACCÈS VARIABLES DANS N8N\nconst methodes = {\n  methode1: $env.mistral_key_site_emploi,\n  methode2: process.env.mistral_key_site_emploi,\n  methode3: $env['mistral_key_site_emploi'],\n  methode4: $env.MISTRAL_API_KEY_CURSOR_MCP_SERVER,\n  methode5: process.env.MISTRAL_API_KEY_CURSOR_MCP_SERVER\n};\n\nconsole.log('🧪 Test méthodes accès variables:');\nfor (const [nom, valeur] of Object.entries(methodes)) {\n  if (valeur) {\n    console.log(`✅ ${nom}: ${valeur.substring(0, 8)}...`);\n  } else {\n    console.log(`❌ ${nom}: undefined`);\n  }\n}\n\n// SÉLECTION CLÉ FONCTIONNELLE\nlet mistralKey = null;\nlet keySource = null;\n\nif ($env.mistral_key_site_emploi) {\n  mistralKey = $env.mistral_key_site_emploi;\n  keySource = 'mistral_key_site_emploi';\n} else if ($env.MISTRAL_API_KEY_CURSOR_MCP_SERVER) {\n  mistralKey = $env.MISTRAL_API_KEY_CURSOR_MCP_SERVER;\n  keySource = 'MISTRAL_API_KEY_CURSOR_MCP_SERVER';\n} else if (process.env.mistral_key_site_emploi) {\n  mistralKey = process.env.mistral_key_site_emploi;\n  keySource = 'process.env.mistral_key_site_emploi';\n} else if (process.env.MISTRAL_API_KEY_CURSOR_MCP_SERVER) {\n  mistralKey = process.env.MISTRAL_API_KEY_CURSOR_MCP_SERVER;\n  keySource = 'process.env.MISTRAL_API_KEY_CURSOR_MCP_SERVER';\n}\n\nif (!mistralKey) {\n  console.log('❌ ERREUR: Aucune clé Mistral accessible');\n  return [{\n    json: {\n      error: 'NO_MISTRAL_KEY',\n      message: 'Aucune variable Mistral accessible dans N8N',\n      debug: methodes\n    }\n  }];\n}\n\nconsole.log(`✅ Clé sélectionnée: ${keySource}`);\nconsole.log(`🔑 Valeur: ${mistralKey.substring(0, 8)}...`);\n\n// TESTS AVEC DIFFÉRENTS NIVEAUX\nconst testsOffres = [\n  {\n    id: 'test-simple',\n    title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n    company: 'Orange Cyberdefense',\n    description: 'Formation alternance 24 mois analyste cybersécurité SOC.',\n    contract_type: 'Contrat d\\'apprentissage',\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'test-complexe',\n    title: 'Apprentissage - Commercial Solutions Cyber B2B',\n    company: 'CyberVente Corp',\n    description: 'Contrat apprentissage commercial spécialisé vente solutions cybersécurité.',\n    contract_type: 'Contrat d\\'apprentissage',\n    attendu: 'INVALIDE'\n  },\n  {\n    id: 'test-stage',\n    title: 'Stage - Pentester Junior',\n    company: 'SecuriTest',\n    description: 'Stage 6 mois pentesting et audit sécurité.',\n    contract_type: 'Stage',\n    attendu: 'INVALIDE'\n  }\n];\n\nreturn testsOffres.map((test, index) => {\n  const prompt = `ANALYSE OFFRE ALTERNANCE CYBERSÉCURITÉ:\n\nTITRE: ${test.title}\nENTREPRISE: ${test.company}\nCONTRAT: ${test.contract_type}\nDESCRIPTION: ${test.description}\n\nCRITÈRES VALIDATION:\n✅ CONTRAT = apprentissage OU alternance OU contrat pro\n✅ DOMAINE = cybersécurité OU sécurité informatique\n❌ EXCLURE = stage, CDI, CDD, commercial, marketing\n\nRÉPONDS EXACTEMENT:\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [raison courte]`;\n\n  return {\n    json: {\n      ...test,\n      mistral_key: mistralKey,\n      key_source: keySource,\n      prompt: prompt,\n      payload: {\n        model: \"mistral-large-latest\",\n        messages: [\n          {\n            role: \"system\",\n            content: \"Tu es un expert en classification d'offres d'alternance cybersécurité. Réponds avec le format exact demandé.\"\n          },\n          {\n            role: \"user\",\n            content: prompt\n          }\n        ],\n        temperature: 0.05,\n        max_tokens: 150\n      },\n      test_number: index + 1,\n      timestamp: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "id": "fix-env-vars",
+      "name": "🔧 Fix Variables ENV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.mistral_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-fix-env-test/1.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ $json.payload }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-mistral-fixed",
+      "name": "🌐 Appel Mistral (Variables Fixées)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT SUCCÈS MISTRAL\nconst inputData = $('🔧 Fix Variables ENV').item.json;\nconst response = $input.item.json;\n\nconsole.log(`✅ === SUCCÈS MISTRAL (${inputData.key_source}) ===`);\nconsole.log(`🎯 Test: ${inputData.title}`);\nconsole.log(`📝 Attendu: ${inputData.attendu}`);\n\nlet classification = 'ERREUR';\nlet justification = 'Réponse invalide';\nlet confidence = 0;\n\nif (response && response.choices && response.choices[0]) {\n  const content = response.choices[0].message.content.trim();\n  console.log(`📋 Réponse Mistral: ${content}`);\n  \n  // EXTRACTION CLASSIFICATION\n  const validMatch = content.match(/CLASSIFICATION:\\s*(VALIDE)/i);\n  const invalidMatch = content.match(/CLASSIFICATION:\\s*(INVALIDE)/i);\n  \n  if (validMatch && !invalidMatch) {\n    classification = 'VALIDE';\n    confidence = 0.95;\n  } else if (invalidMatch) {\n    classification = 'INVALIDE';\n    confidence = 0.95;\n  } else {\n    classification = 'INCERTAIN';\n    confidence = 0.4;\n  }\n  \n  // EXTRACTION JUSTIFICATION\n  const justifMatch = content.match(/JUSTIFICATION:\\s*(.+)/i);\n  if (justifMatch) {\n    justification = justifMatch[1].trim();\n  }\n}\n\nconst isCorrect = classification === inputData.attendu;\nconst icon = isCorrect ? '✅' : '❌';\n\nconsole.log(`${icon} Classification: ${classification}`);\nconsole.log(`🎯 Correct: ${isCorrect}`);\nconsole.log(`💡 Justification: ${justification}`);\n\nreturn {\n  json: {\n    ...inputData,\n    result: {\n      classification: classification,\n      justification: justification,\n      confidence: confidence,\n      is_correct: isCorrect,\n      raw_response: response.choices[0].message.content,\n      tokens_used: response.usage,\n      model_used: response.model\n    },\n    status: 'SUCCESS',\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-success",
+      "name": "✅ Traiter Succès",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT ERREUR MISTRAL\nconst inputData = $('🔧 Fix Variables ENV').item.json;\nconst error = $input.item;\n\nconsole.log(`❌ === ERREUR MISTRAL (${inputData.key_source}) ===`);\nconsole.log(`🎯 Test: ${inputData.title}`);\nconsole.log(`📊 Code: ${error.httpCode}`);\nconsole.log(`📋 Message: ${error.message}`);\n\nlet diagnostic = 'Erreur inconnue';\nlet action = 'Investiguer';\n\nswitch(error.httpCode) {\n  case 401:\n    diagnostic = 'Clé API invalide';\n    action = 'Vérifier la clé utilisée';\n    break;\n  case 422:\n    diagnostic = 'Payload JSON invalide';\n    action = 'Vérifier structure des messages';\n    break;\n  case 429:\n    diagnostic = 'Limite de taux dépassée';\n    action = 'Attendre et réessayer';\n    break;\n  case 500:\n    diagnostic = 'Erreur serveur Mistral';\n    action = 'Réessayer plus tard';\n    break;\n}\n\nreturn {\n  json: {\n    ...inputData,\n    result: {\n      classification: 'ERREUR_API',\n      justification: diagnostic,\n      confidence: 0,\n      is_correct: false,\n      error_details: {\n        code: error.httpCode,\n        message: error.message,\n        diagnostic: diagnostic,\n        action: action\n      }\n    },\n    status: 'ERROR',\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-error",
+      "name": "❌ Traiter Erreur",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// RAPPORT FINAL\nconst allResults = [...$('✅ Traiter Succès').all(), ...$('❌ Traiter Erreur').all()];\n\nconsole.log('📊 === RAPPORT FINAL MISTRAL FIXÉ ===');\n\nlet successCount = 0;\nlet errorCount = 0;\nlet correctCount = 0;\n\nconst details = allResults.map(item => {\n  const data = item.json;\n  const isSuccess = data.status === 'SUCCESS';\n  const isCorrect = data.result.is_correct;\n  \n  if (isSuccess) {\n    successCount++;\n    if (isCorrect) correctCount++;\n  } else {\n    errorCount++;\n  }\n  \n  return {\n    test: data.id,\n    title: data.title,\n    key_source: data.key_source,\n    attendu: data.attendu,\n    classification: data.result.classification,\n    correct: isCorrect,\n    confidence: data.result.confidence,\n    tokens: data.result.tokens_used,\n    status: data.status\n  };\n});\n\nconst totalTests = allResults.length;\nconst successRate = totalTests > 0 ? (successCount / totalTests * 100).toFixed(1) : 0;\nconst accuracyRate = successCount > 0 ? (correctCount / successCount * 100).toFixed(1) : 0;\n\nconsole.log(`🔢 Total tests: ${totalTests}`);\nconsole.log(`✅ Succès: ${successCount}/${totalTests} (${successRate}%)`);\nconsole.log(`🎯 Précision: ${correctCount}/${successCount} (${accuracyRate}%)`);\nconsole.log(`❌ Erreurs: ${errorCount}`);\n\nif (successCount > 0) {\n  console.log('🎉 MISTRAL FONCTIONNE ! Variables d\\'environnement corrigées');\n} else {\n  console.log('❌ Problème persistant avec les variables');\n}\n\nreturn {\n  json: {\n    rapport: {\n      total_tests: totalTests,\n      success_count: successCount,\n      error_count: errorCount,\n      correct_count: correctCount,\n      success_rate: `${successRate}%`,\n      accuracy_rate: `${accuracyRate}%`,\n      key_source_used: allResults.length > 0 ? allResults[0].json.key_source : 'N/A',\n      status: successCount > 0 ? 'MISTRAL_OPERATIONAL' : 'STILL_ISSUES'\n    },\n    details: details,\n    recommendation: successCount > 0 ? \n      'DÉPLOYER AVEC MISTRAL - Variables corrigées' : \n      'UTILISER CLASSIFICATION LOCALE - Problème persistant',\n    generated_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "final-report",
+      "name": "📊 Rapport Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🔧 Fix Variables ENV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔧 Fix Variables ENV": {
+      "main": [
+        [
+          {
+            "node": "🌐 Appel Mistral (Variables Fixées)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Appel Mistral (Variables Fixées)": {
+      "main": [
+        [
+          {
+            "node": "✅ Traiter Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Traiter Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Traiter Succès": {
+      "main": [
+        [
+          {
+            "node": "📊 Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Traiter Erreur": {
+      "main": [
+        [
+          {
+            "node": "📊 Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "mistral-fix-env-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-mistral-production-fix-env",
+  "tags": ["mistral", "production", "fix", "env-vars"]
+}

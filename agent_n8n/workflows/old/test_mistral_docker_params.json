@@ -1,0 +1,138 @@
+{
+  "name": "Test Mistral Docker - BodyParams",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Préparation payload pour bodyParameters Docker\n// Évite les problèmes d'expression {{ $json }}\n\nconst payload = {\n  model: \"mistral-small-latest\",\n  messages: JSON.stringify([\n    {\n      role: \"user\",\n      content: \"Test Docker: Cette offre 'Alternance Cybersécurité' est-elle valide ? Réponds VALIDE ou INVALIDE.\"\n    }\n  ]),\n  temperature: \"0.1\",\n  max_tokens: \"15\"\n};\n\nconsole.log('🐳 === DOCKER BODYPARAMS SOLUTION ===');\nconsole.log('✅ Model:', payload.model);\nconsole.log('✅ Messages (JSON string):', payload.messages);\nconsole.log('✅ Temperature:', payload.temperature);\nconsole.log('✅ Max tokens:', payload.max_tokens);\nconsole.log('🔑 Auth: Header avec clé validée');\n\n// Retour pour bodyParameters\nreturn { json: payload };"
+      },
+      "id": "preparation",
+      "name": "Préparation BodyParams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "={{ $json.model }}"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.messages }}"
+            },
+            {
+              "name": "temperature",
+              "value": "={{ $json.temperature }}"
+            },
+            {
+              "name": "max_tokens",
+              "value": "={{ $json.max_tokens }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "api-call",
+      "name": "API Call BodyParams",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Debug réponse BodyParams Docker\nconsole.log('🎯 === RÉPONSE BODYPARAMS DOCKER ===');\nconsole.log('📊 Type:', typeof $input.first().json);\nconsole.log('🔍 Keys:', Object.keys($input.first().json || {}));\nconsole.log('📋 Full response:');\nconsole.log(JSON.stringify($input.first().json, null, 2));\n\nconst data = $input.first().json;\n\n// Vérification structure Mistral\nif (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {\n  const content = data.choices[0].message.content.trim();\n  \n  console.log('✅ === BODYPARAMS SUCCESS ! ===');\n  console.log('📝 Mistral response:', content);\n  \n  // Classification\n  const contentUpper = content.toUpperCase();\n  const isValid = contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE');\n  const classification = isValid ? 'VALIDE' : 'INVALIDE';\n  \n  console.log('🔍 Classification:', classification);\n  console.log('⚡ Model:', data.model);\n  console.log('📊 Usage:', JSON.stringify(data.usage || {}));\n  \n  return {\n    json: {\n      success: true,\n      mistral_response: content,\n      classification: classification,\n      is_valid: isValid,\n      method: 'docker_bodyparams',\n      model_used: data.model,\n      usage: data.usage,\n      test_status: 'BODYPARAMS_SUCCESS',\n      recommendation: 'BodyParams fonctionne avec Docker N8N'\n    }\n  };\n} \n\n// Erreur API\nelse if (data && data.error) {\n  console.log('🚨 Erreur API BodyParams:', data.error);\n  return {\n    json: {\n      success: false,\n      error: data.error,\n      method: 'docker_bodyparams',\n      test_status: 'API_ERROR'\n    }\n  };\n}\n\n// Structure inattendue  \nelse {\n  console.log('❌ Structure BodyParams invalide');\n  return {\n    json: {\n      success: false,\n      error: 'Structure réponse invalide',\n      received_data: data,\n      method: 'docker_bodyparams',\n      test_status: 'BODYPARAMS_FAILED'\n    }\n  };\n}"
+      },
+      "id": "debug-response",
+      "name": "Debug BodyParams",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Préparation BodyParams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation BodyParams": {
+      "main": [
+        [
+          {
+            "node": "API Call BodyParams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Call BodyParams": {
+      "main": [
+        [
+          {
+            "node": "Debug BodyParams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "docker-bodyparams",
+      "name": "Docker BodyParams"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-05T09:15:00.000Z",
+  "versionId": "9.0.0"
+}

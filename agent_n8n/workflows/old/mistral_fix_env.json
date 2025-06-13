@@ -1,0 +1,191 @@
+{
+  "name": "🔧 Mistral Fix Variables ENV",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-fix",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TEST ACCÈS VARIABLES D'ENVIRONNEMENT N8N\nconsole.log('🔧 === FIX ACCÈS VARIABLES MISTRAL ===');\n\n// DIFFÉRENTES MÉTHODES D'ACCÈS\nconst tests = {\n  'env_mistral_key': $env.mistral_key_site_emploi,\n  'env_cursor_key': $env.MISTRAL_API_KEY_CURSOR_MCP_SERVER,\n  'process_mistral': typeof process !== 'undefined' ? process.env?.mistral_key_site_emploi : null,\n  'process_cursor': typeof process !== 'undefined' ? process.env?.MISTRAL_API_KEY_CURSOR_MCP_SERVER : null\n};\n\nconsole.log('🧪 Tests accès variables:');\nfor (const [nom, valeur] of Object.entries(tests)) {\n  if (valeur) {\n    console.log(`✅ ${nom}: ${valeur.substring(0, 8)}...`);\n  } else {\n    console.log(`❌ ${nom}: undefined`);\n  }\n}\n\n// SÉLECTION CLEF FONCTIONNELLE\nlet mistralKey = null;\nlet keySource = null;\n\nif ($env.mistral_key_site_emploi) {\n  mistralKey = $env.mistral_key_site_emploi;\n  keySource = '$env.mistral_key_site_emploi';\n} else if ($env.MISTRAL_API_KEY_CURSOR_MCP_SERVER) {\n  mistralKey = $env.MISTRAL_API_KEY_CURSOR_MCP_SERVER;\n  keySource = '$env.MISTRAL_API_KEY_CURSOR_MCP_SERVER';\n}\n\nif (!mistralKey) {\n  console.log('❌ ERREUR: Variables Mistral inaccessibles');\n  return [{\n    json: {\n      error: 'NO_ACCESS',\n      message: 'Variables Mistral non accessibles dans N8N',\n      debug_tests: tests\n    }\n  }];\n}\n\nconsole.log(`✅ Clef sélectionnée: ${keySource}`);\nconsole.log(`🔑 Première partie: ${mistralKey.substring(0, 12)}...`);\n\n// TEST SIMPLE AVEC CLÉ TROUVÉE\nconst testOffre = {\n  id: 'test-fix-env',\n  title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n  company: 'Orange Cyberdefense',\n  description: 'Formation alternance 24 mois analyste cybersécurité SOC.',\n  contract_type: 'Contrat d\\'apprentissage',\n  attendu: 'VALIDE'\n};\n\nconst payload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert en classification d'offres d'alternance cybersécurité. Réponds avec le format exact demandé.\"\n    },\n    {\n      role: \"user\",\n      content: `ANALYSE OFFRE ALTERNANCE CYBERSÉCURITÉ:\n\nTITRE: ${testOffre.title}\nENTREPRISE: ${testOffre.company}\nCONTRAT: ${testOffre.contract_type}\nDESCRIPTION: ${testOffre.description}\n\nCRITÈRES VALIDATION:\n✅ CONTRAT = apprentissage OU alternance OU contrat pro\n✅ DOMAINE = cybersécurité OU sécurité informatique\n❌ EXCLURE = stage, CDI, CDD, commercial, marketing\n\nRÉPONDS EXACTEMENT:\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [raison courte]`\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 150\n};\n\nreturn {\n  json: {\n    ...testOffre,\n    mistral_key: mistralKey,\n    key_source: keySource,\n    payload: payload,\n    debug_tests: tests,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "test-env-access",
+      "name": "🧪 Test Accès Variables",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.mistral_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ $json.payload }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-mistral-test",
+      "name": "🌐 Test Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result-summary",
+              "name": "result",
+              "value": "✅ MISTRAL FONCTIONNE - Variables ENV corrigées",
+              "type": "string"
+            },
+            {
+              "id": "key-used",
+              "name": "key_source_used",
+              "value": "={{ $('🧪 Test Accès Variables').item.json.key_source }}",
+              "type": "string"
+            },
+            {
+              "id": "response-content",
+              "name": "mistral_response",
+              "value": "={{ $json.choices[0].message.content }}",
+              "type": "string"
+            },
+            {
+              "id": "tokens-used",
+              "name": "tokens",
+              "value": "={{ $json.usage.total_tokens }}",
+              "type": "number"
+            },
+            {
+              "id": "model-used",
+              "name": "model",
+              "value": "={{ $json.model }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-success",
+      "name": "✅ Succès Formaté",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-summary",
+              "name": "result",
+              "value": "❌ ERREUR MISTRAL - {{ $json.httpCode }}",
+              "type": "string"
+            },
+            {
+              "id": "error-code",
+              "name": "error_code",
+              "value": "={{ $json.httpCode }}",
+              "type": "number"
+            },
+            {
+              "id": "error-message",
+              "name": "error_message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "key-tested",
+              "name": "key_source_tested",
+              "value": "={{ $('🧪 Test Accès Variables').item.json.key_source }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-error",
+      "name": "❌ Erreur Formatée",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🧪 Test Accès Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧪 Test Accès Variables": {
+      "main": [
+        [
+          {
+            "node": "🌐 Test Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Test Mistral": {
+      "main": [
+        [
+          {
+            "node": "✅ Succès Formaté",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Erreur Formatée",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fix-env-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "mistral-fix-env-test",
+  "tags": ["test", "mistral", "fix", "env"]
+}

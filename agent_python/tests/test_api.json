@@ -1,0 +1,5 @@
+{
+  "termes": ["alternance cybersécurité", "alternance sécurité informatique"],
+  "max_offres": 10,
+  "sources": ["pole_emploi", "apec"]
+}

@@ -1,0 +1,309 @@
+{
+  "name": "DEBUG - Mistral API 404 Error",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-debug-404",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TEST CONFIGURATION MISTRAL API\nconsole.log('🔍 === DIAGNOSTIC MISTRAL API 404 ===');\n\n// URLs à tester\nconst urlsToTest = [\n  {\n    name: 'URL_CORRECTE_MISTRAL',\n    url: 'https://api.mistral.ai/v1/chat/completions',\n    description: 'URL officielle documentée'\n  },\n  {\n    name: 'URL_ALTERNATIVE_1', \n    url: 'https://api.mistral.ai/v1/completions',\n    description: 'Alternative sans chat'\n  },\n  {\n    name: 'URL_ALTERNATIVE_2',\n    url: 'https://api.mistral.ai/completions',\n    description: 'Sans version'\n  }\n];\n\n// Payload de test minimal\nconst testPayload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: \"Test simple\"\n    }\n  ],\n  max_tokens: 10\n};\n\nconsole.log('🎯 URLs à tester:', urlsToTest.length);\nconsole.log('📋 Payload test:', JSON.stringify(testPayload, null, 2));\n\nreturn urlsToTest.map((urlTest, index) => {\n  return {\n    json: {\n      test_id: `mistral-url-test-${index + 1}`,\n      test_name: urlTest.name,\n      test_url: urlTest.url,\n      test_description: urlTest.description,\n      payload_string: JSON.stringify(testPayload),\n      api_key: 'fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95',\n      timestamp: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "id": "generate-url-tests",
+      "name": "🔍 Générer Tests URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.test_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.api_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-debug-mistral/1.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.payload_string }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "test-mistral-urls",
+      "name": "🌐 Tester URLs Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE SUCCÈS API MISTRAL\nconst testConfig = $('🔍 Générer Tests URL').item.json;\nconst apiResponse = $input.item.json;\n\nconsole.log(`✅ === SUCCÈS: ${testConfig.test_name} ===`);\nconsole.log('🌐 URL testée:', testConfig.test_url);\nconsole.log('📊 Réponse reçue:', JSON.stringify(apiResponse, null, 2));\n\n// Vérifier structure réponse\nlet analysisResult = {\n  test_name: testConfig.test_name,\n  url_tested: testConfig.test_url,\n  success: true,\n  response_valid: false,\n  has_choices: false,\n  has_content: false,\n  recommendation: 'UNKNOWN'\n};\n\nif (apiResponse && apiResponse.choices && Array.isArray(apiResponse.choices)) {\n  analysisResult.has_choices = true;\n  \n  if (apiResponse.choices.length > 0 && apiResponse.choices[0].message && apiResponse.choices[0].message.content) {\n    analysisResult.has_content = true;\n    analysisResult.response_valid = true;\n    analysisResult.recommendation = 'URL_FONCTIONNELLE';\n    \n    console.log('✅ URL fonctionnelle!');\n    console.log('📝 Contenu reçu:', apiResponse.choices[0].message.content);\n  }\n}\n\nif (!analysisResult.response_valid) {\n  analysisResult.recommendation = 'URL_REPONSE_INVALIDE';\n  console.log('⚠️ URL répond mais structure invalide');\n}\n\nreturn {\n  json: {\n    ...analysisResult,\n    model_used: apiResponse.model,\n    usage: apiResponse.usage,\n    full_response: apiResponse,\n    tested_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "analyze-success",
+      "name": "✅ Analyser Succès",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ANALYSE ERREUR API MISTRAL\nconst testConfig = $('🔍 Générer Tests URL').item.json;\nconst errorData = $input.item;\n\nconsole.log(`❌ === ERREUR: ${testConfig.test_name} ===`);\nconsole.log('🌐 URL testée:', testConfig.test_url);\nconsole.log('🔍 Code erreur:', errorData.httpCode);\nconsole.log('📋 Message:', errorData.message);\n\n// Analyser le type d'erreur\nlet errorAnalysis = {\n  test_name: testConfig.test_name,\n  url_tested: testConfig.test_url,\n  success: false,\n  error_code: errorData.httpCode,\n  error_type: 'UNKNOWN',\n  diagnosis: 'À investiguer',\n  recommendation: 'TESTER_AUTRE_URL'\n};\n\nswitch(errorData.httpCode) {\n  case 404:\n    errorAnalysis.error_type = 'NOT_FOUND';\n    errorAnalysis.diagnosis = 'Endpoint inexistant';\n    errorAnalysis.recommendation = 'URL_INCORRECTE';\n    break;\n  case 401:\n    errorAnalysis.error_type = 'UNAUTHORIZED';\n    errorAnalysis.diagnosis = 'Clé API invalide';\n    errorAnalysis.recommendation = 'VERIFIER_CLE_API';\n    break;\n  case 403:\n    errorAnalysis.error_type = 'FORBIDDEN';\n    errorAnalysis.diagnosis = 'Accès refusé';\n    errorAnalysis.recommendation = 'VERIFIER_PERMISSIONS';\n    break;\n  case 429:\n    errorAnalysis.error_type = 'RATE_LIMIT';\n    errorAnalysis.diagnosis = 'Trop de requêtes';\n    errorAnalysis.recommendation = 'ATTENDRE_ET_REESSAYER';\n    break;\n  case 500:\n    errorAnalysis.error_type = 'SERVER_ERROR';\n    errorAnalysis.diagnosis = 'Problème serveur Mistral';\n    errorAnalysis.recommendation = 'REESSAYER_PLUS_TARD';\n    break;\n}\n\nconsole.log('🏷️ Type erreur:', errorAnalysis.error_type);\nconsole.log('💡 Diagnostic:', errorAnalysis.diagnosis);\nconsole.log('🎯 Recommandation:', errorAnalysis.recommendation);\n\nreturn {\n  json: {\n    ...errorAnalysis,\n    raw_error: errorData,\n    tested_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "analyze-error",
+      "name": "❌ Analyser Erreur",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-url-works",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-working-url",
+      "name": "🔍 URL Fonctionne ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "working-url",
+              "name": "working_url",
+              "value": "{{ $json.url_tested }}",
+              "type": "string"
+            },
+            {
+              "id": "working-test",
+              "name": "test_name",
+              "value": "{{ $json.test_name }}",
+              "type": "string"
+            },
+            {
+              "id": "working-valid",
+              "name": "response_valid",
+              "value": "{{ $json.response_valid }}",
+              "type": "boolean"
+            },
+            {
+              "id": "working-model",
+              "name": "model_confirmed",
+              "value": "{{ $json.model_used }}",
+              "type": "string"
+            },
+            {
+              "id": "working-recommendation",
+              "name": "action",
+              "value": "UTILISER_CETTE_URL",
+              "type": "string"
+            },
+            {
+              "id": "working-summary",
+              "name": "summary",
+              "value": "✅ URL Mistral fonctionnelle: {{ $json.url_tested }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-working-url",
+      "name": "✅ URL Fonctionnelle",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "failed-url",
+              "name": "failed_url",
+              "value": "{{ $json.url_tested }}",
+              "type": "string"
+            },
+            {
+              "id": "failed-test",
+              "name": "test_name",
+              "value": "{{ $json.test_name }}",
+              "type": "string"
+            },
+            {
+              "id": "failed-error",
+              "name": "error_type",
+              "value": "{{ $json.error_type }}",
+              "type": "string"
+            },
+            {
+              "id": "failed-code",
+              "name": "error_code",
+              "value": "{{ $json.error_code }}",
+              "type": "number"
+            },
+            {
+              "id": "failed-diagnosis",
+              "name": "diagnosis",
+              "value": "{{ $json.diagnosis }}",
+              "type": "string"
+            },
+            {
+              "id": "failed-action",
+              "name": "action",
+              "value": "{{ $json.recommendation }}",
+              "type": "string"
+            },
+            {
+              "id": "failed-summary",
+              "name": "summary",
+              "value": "❌ URL échoue: {{ $json.url_tested }} ({{ $json.error_type }})",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-failed-url",
+      "name": "❌ URL Échoue",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1340, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🔍 Générer Tests URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Générer Tests URL": {
+      "main": [
+        [
+          {
+            "node": "🌐 Tester URLs Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Tester URLs Mistral": {
+      "main": [
+        [
+          {
+            "node": "✅ Analyser Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Analyser Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Analyser Succès": {
+      "main": [
+        [
+          {
+            "node": "🔍 URL Fonctionne ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Analyser Erreur": {
+      "main": [
+        [
+          {
+            "node": "🔍 URL Fonctionne ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 URL Fonctionne ?": {
+      "main": [
+        [
+          {
+            "node": "✅ URL Fonctionnelle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ URL Échoue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "debug-404-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-debug-404",
+  "tags": ["debug", "mistral", "404"]
+}

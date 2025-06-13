@@ -1,0 +1,271 @@
+{
+  "name": "Agent Alternance API - Workflow Final Corrigé",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Déclencheur Quotidien",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:9555/health",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-api-health",
+      "name": "Test API Santé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9555/scrape-offres",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"termes\": [\"alternance cybersécurité\", \"alternance sécurité informatique\", \"alternant cybersécurité\", \"alternance ingénieur réseaux sécurité\", \"alternance master réseaux télécommunication cybersécurité\"],\n  \"max_offres\": 50,\n  \"sources\": [\"pole_emploi\", \"apec\", \"indeed\", \"monster\", \"hellowork\", \"walt\", \"bloom_alternance\", \"portail_alternance\", \"labonne_alternance\"]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "collecte-offres-api",
+      "name": "Collecte Offres API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results.offres",
+        "options": {}
+      },
+      "id": "separer-offres",
+      "name": "Séparer Offres",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Debug des données reçues\nconsole.log('🔍 DEBUG - Données reçues du split:');\nconsole.log('$json:', JSON.stringify($json, null, 2));\nconsole.log('Type:', typeof $json);\nconsole.log('Keys:', Object.keys($json || {}));\n\n// Test des champs requis\nconst requiredFields = ['title', 'company', 'location', 'description', 'scraper_source'];\nrequiredFields.forEach(field => {\n  console.log(`${field}: ${$json[field] || 'MANQUANT'}`);\n});\n\nreturn { json: $json };"
+      },
+      "id": "debug-donnees",
+      "name": "Debug Données",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-small-latest\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyse cette offre: \" + ($json.title || 'Titre manquant') + \" chez \" + ($json.company || 'Entreprise manquante') + \". Réponds par VALIDE ou INVALIDE.\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 100\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "classification-mistral",
+      "name": "Classification IA Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1240, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "ai_response",
+              "value": "={{ $json.choices[0].message.content }}"
+            },
+            {
+              "name": "is_valid",
+              "value": "={{ $json.choices[0].message.content.startsWith('VALIDE') }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $('Séparer Offres').item.json.title }}"
+            },
+            {
+              "name": "company",
+              "value": "={{ $('Séparer Offres').item.json.company }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $('Séparer Offres').item.json.location }}"
+            },
+            {
+              "name": "url",
+              "value": "={{ $('Séparer Offres').item.json.url }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $('Séparer Offres').item.json.description }}"
+            },
+            {
+              "name": "scraper_source",
+              "value": "={{ $('Séparer Offres').item.json.scraper_source }}"
+            }
+          ]
+        }
+      },
+      "id": "enrichissement-donnees",
+      "name": "Enrichissement Données",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1460, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Traitement unifié de toutes les offres\nconst allItems = $input.all();\n\n// Séparer les offres valides et invalides\nconst validOffers = allItems.filter(item => item.json.is_valid === true);\nconst invalidOffers = allItems.filter(item => item.json.is_valid !== true);\n\nconsole.log(`✅ Offres valides: ${validOffers.length}`);\nconsole.log(`❌ Offres invalides: ${invalidOffers.length}`);\n\n// Génération du rapport final\nconst stats = {\n  total_offres_analysees: allItems.length,\n  offres_validees: validOffers.length,\n  offres_rejetees: invalidOffers.length,\n  timestamp: new Date().toISOString(),\n  sources: [...new Set(allItems.map(o => o.json.scraper_source))],\n  locations_valides: [...new Set(validOffers.map(o => o.json.location))].slice(0, 5)\n};\n\nconsole.log('📊 Rapport final généré:', JSON.stringify(stats, null, 2));\n\nreturn [{ \n  json: {\n    success: true,\n    rapport: stats,\n    offres_validees: validOffers.map(o => ({\n      title: o.json.title,\n      company: o.json.company,\n      location: o.json.location,\n      url: o.json.url,\n      scraper_source: o.json.scraper_source,\n      ai_validation: o.json.ai_response\n    })),\n    offres_rejetees: invalidOffers.map(o => ({\n      title: o.json.title,\n      company: o.json.company,\n      location: o.json.location,\n      scraper_source: o.json.scraper_source,\n      raison_rejet: o.json.ai_response\n    }))\n  }\n}];"
+      },
+      "id": "formatage-rapport-unifie",
+      "name": "Formatage Rapport Unifié",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1680, 300]
+    }
+  ],
+  "connections": {
+    "Déclencheur Quotidien": {
+      "main": [
+        [
+          {
+            "node": "Test API Santé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Santé": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres API": {
+      "main": [
+        [
+          {
+            "node": "Séparer Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer Offres": {
+      "main": [
+        [
+          {
+            "node": "Debug Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Données": {
+      "main": [
+        [
+          {
+            "node": "Classification IA Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification IA Mistral": {
+      "main": [
+        [
+          {
+            "node": "Enrichissement Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichissement Données": {
+      "main": [
+        [
+          {
+            "node": "Formatage Rapport Unifié",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "alternance-api-final-corrige",
+      "name": "Alternance API Final Corrigé"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T18:00:00.000Z",
+  "versionId": "1.4.0"
+}

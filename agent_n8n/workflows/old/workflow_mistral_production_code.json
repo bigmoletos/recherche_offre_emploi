@@ -1,0 +1,95 @@
+{
+  "name": "Classification Mistral - Production Code",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Déclencheur Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Simulation de données d'offres pour test\n// En production, ces données viennent du node précédent\n\nconst offresTest = [\n  {\n    title: \"Alternance Cybersécurité - SOC Analyst\",\n    company: \"TechCorp\",\n    location: \"Paris (75)\",\n    description: \"Recherche alternant pour poste SOC Analyst en cybersécurité, formation en sécurité informatique...\",\n    url: \"https://example.com/offre/1\"\n  },\n  {\n    title: \"Stage Marketing Digital\", \n    company: \"MarketCorp\",\n    location: \"Lyon (69)\",\n    description: \"Stage en marketing digital, réseaux sociaux...\",\n    url: \"https://example.com/offre/2\"\n  },\n  {\n    title: \"Alternance Développeur Sécurité\",\n    company: \"SecureTech\", \n    location: \"Toulouse (31)\",\n    description: \"Formation alternance développement sécurisé, cryptographie, audit sécurité...\",\n    url: \"https://example.com/offre/3\"\n  }\n];\n\nconsole.log('📋 === PRÉPARATION OFFRES POUR CLASSIFICATION ===');\nconsole.log('📊 Nombre d\\'offres à analyser:', offresTest.length);\n\n// Retourne chaque offre comme un item séparé pour traitement individuel\nreturn offresTest.map(offre => ({ json: offre }));"
+      },
+      "id": "preparation-offres",
+      "name": "Préparation Offres",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// CLASSIFICATION MISTRAL - NODE CODE PRODUCTION\n// Solution définitive pour Docker N8N\n\nconst fetch = require('node-fetch');\n\n// Configuration centralisée\nconst config = {\n  apiKey: process.env.MISTRAL_API_KEY || 'fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95',\n  apiUrl: 'https://api.mistral.ai/v1/chat/completions',\n  model: 'mistral-small-latest',\n  timeout: 30000\n};\n\n// Données de l'offre actuelle\nconst offre = $input.item.json;\n\nconsole.log(`🤖 === CLASSIFICATION MISTRAL: ${offre.title} ===`);\nconsole.log('🏢 Entreprise:', offre.company);\nconsole.log('📍 Localisation:', offre.location);\n\n// Prompt optimisé pour la classification\nconst prompt = `Analyse cette offre d'emploi :\n\nTitre: ${offre.title}\nEntreprise: ${offre.company}\nDescription: ${offre.description || 'Non spécifiée'}\n\nCette offre correspond-elle à une ALTERNANCE en CYBERSÉCURITÉ ?\n\nCritères :\n- Doit être une alternance (pas un stage ou CDI)\n- Doit être liée à la cybersécurité, sécurité informatique, SOC, pentest, audit sécurité\n\nRéponds uniquement par: VALIDE ou INVALIDE`;\n\n// Payload Mistral\nconst payload = {\n  model: config.model,\n  messages: [\n    {\n      role: \"user\",\n      content: prompt\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 100\n};\n\nconsole.log('📦 Payload Mistral préparé');\nconsole.log('📏 Taille prompt:', prompt.length, 'caractères');\n\ntry {\n  // Appel API Mistral robuste\n  console.log('🌐 Appel API Mistral...');\n  \n  const response = await fetch(config.apiUrl, {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Authorization': `Bearer ${config.apiKey}`\n    },\n    body: JSON.stringify(payload),\n    timeout: config.timeout\n  });\n  \n  console.log('📊 Status HTTP:', response.status);\n  \n  if (!response.ok) {\n    const errorText = await response.text();\n    console.log('❌ Erreur API:', response.status, errorText);\n    \n    // Retour avec erreur mais structure préservée\n    return {\n      json: {\n        ...offre,\n        mistral_response: 'ERREUR_API',\n        classification: 'ERREUR',\n        is_valid: false,\n        confidence: 0,\n        error: `HTTP ${response.status}: ${errorText}`,\n        processed_at: new Date().toISOString()\n      }\n    };\n  }\n  \n  // Parse de la réponse\n  const data = await response.json();\n  console.log('📥 Réponse reçue');\n  \n  if (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {\n    const content = data.choices[0].message.content.trim();\n    \n    console.log('✅ === MISTRAL SUCCESS ===');\n    console.log('📝 Réponse brute:', content);\n    \n    // Classification intelligente\n    const contentUpper = content.toUpperCase();\n    let classification, isValid, confidence;\n    \n    if (contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE')) {\n      classification = 'VALIDE';\n      isValid = true;\n      confidence = 0.9;\n      console.log('✅ Offre VALIDÉE');\n    } else if (contentUpper.includes('INVALIDE')) {\n      classification = 'INVALIDE';\n      isValid = false;\n      confidence = 0.9;\n      console.log('❌ Offre REJETÉE');\n    } else {\n      // Réponse ambiguë\n      classification = 'INCERTAIN';\n      isValid = false;\n      confidence = 0.3;\n      console.log('⚠️ Réponse ambiguë');\n    }\n    \n    console.log('🎯 Classification finale:', classification);\n    console.log('📊 Usage tokens:', JSON.stringify(data.usage || {}));\n    \n    // Retour enrichi\n    return {\n      json: {\n        ...offre,\n        mistral_response: content,\n        classification: classification,\n        is_valid: isValid,\n        confidence: confidence,\n        model_used: data.model || config.model,\n        usage: data.usage || {},\n        processed_at: new Date().toISOString(),\n        method: 'node_code_production'\n      }\n    };\n    \n  } else {\n    console.log('❌ Structure réponse Mistral invalide');\n    console.log('🔍 Clés trouvées:', Object.keys(data || {}));\n    \n    return {\n      json: {\n        ...offre,\n        mistral_response: 'STRUCTURE_INVALIDE',\n        classification: 'ERREUR',\n        is_valid: false,\n        confidence: 0,\n        error: 'Structure réponse Mistral invalide',\n        received_data: data,\n        processed_at: new Date().toISOString()\n      }\n    };\n  }\n  \n} catch (error) {\n  console.log('🚨 === ERREUR CRITIQUE ===');\n  console.log('Type:', error.constructor.name);\n  console.log('Message:', error.message);\n  console.log('Stack:', error.stack);\n  \n  return {\n    json: {\n      ...offre,\n      mistral_response: 'ERREUR_RESEAU',\n      classification: 'ERREUR',\n      is_valid: false,\n      confidence: 0,\n      error: `${error.constructor.name}: ${error.message}`,\n      processed_at: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "id": "classification-mistral",
+      "name": "Classification Mistral Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// RAPPORT FINAL - Agrégation des résultats\n\nconst allItems = $input.all();\nconsole.log('📊 === RAPPORT FINAL CLASSIFICATION ===');\nconsole.log('📋 Total items traités:', allItems.length);\n\n// Séparation par statut\nconst validOffers = allItems.filter(item => item.json.is_valid === true);\nconst invalidOffers = allItems.filter(item => item.json.is_valid === false && item.json.classification !== 'ERREUR');\nconst errorOffers = allItems.filter(item => item.json.classification === 'ERREUR');\nconst uncertainOffers = allItems.filter(item => item.json.classification === 'INCERTAIN');\n\nconsole.log('✅ Offres validées:', validOffers.length);\nconsole.log('❌ Offres rejetées:', invalidOffers.length);\nconsole.log('⚠️ Offres incertaines:', uncertainOffers.length);\nconsole.log('🚨 Offres en erreur:', errorOffers.length);\n\n// Calcul des statistiques\nconst totalProcessed = allItems.length;\nconst successRate = Math.round((validOffers.length / totalProcessed) * 100);\nconst errorRate = Math.round((errorOffers.length / totalProcessed) * 100);\n\n// Calcul usage tokens total\nconst totalTokens = allItems.reduce((sum, item) => {\n  const usage = item.json.usage || {};\n  return sum + (usage.total_tokens || 0);\n}, 0);\n\n// Rapport détaillé\nconst rapport = {\n  success: true,\n  timestamp: new Date().toISOString(),\n  statistics: {\n    total_processed: totalProcessed,\n    valid_offers: validOffers.length,\n    invalid_offers: invalidOffers.length,\n    uncertain_offers: uncertainOffers.length,\n    error_offers: errorOffers.length,\n    success_rate: `${successRate}%`,\n    error_rate: `${errorRate}%`,\n    total_tokens_used: totalTokens\n  },\n  offers: {\n    validated: validOffers.map(item => ({\n      title: item.json.title,\n      company: item.json.company,\n      location: item.json.location,\n      url: item.json.url,\n      mistral_response: item.json.mistral_response,\n      confidence: item.json.confidence\n    })),\n    rejected: invalidOffers.map(item => ({\n      title: item.json.title,\n      company: item.json.company,\n      reason: item.json.mistral_response\n    })),\n    uncertain: uncertainOffers.map(item => ({\n      title: item.json.title,\n      company: item.json.company,\n      mistral_response: item.json.mistral_response\n    })),\n    errors: errorOffers.map(item => ({\n      title: item.json.title,\n      company: item.json.company,\n      error: item.json.error\n    }))\n  },\n  method: 'node_code_production',\n  docker_compatible: true\n};\n\nconsole.log('📈 === STATISTIQUES FINALES ===');\nconsole.log('📊 Taux de succès:', rapport.statistics.success_rate);\nconsole.log('📊 Taux d\\'erreur:', rapport.statistics.error_rate);\nconsole.log('🎯 Tokens utilisés:', rapport.statistics.total_tokens_used);\n\nif (validOffers.length > 0) {\n  console.log('🎉 === OFFRES VALIDÉES ===');\n  validOffers.forEach((item, index) => {\n    console.log(`${index + 1}. ${item.json.title} - ${item.json.company}`);\n  });\n}\n\nreturn { json: rapport };"
+      },
+      "id": "rapport-final",
+      "name": "Rapport Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Déclencheur Manuel": {
+      "main": [
+        [
+          {
+            "node": "Préparation Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Offres": {
+      "main": [
+        [
+          {
+            "node": "Classification Mistral Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification Mistral Code": {
+      "main": [
+        [
+          {
+            "node": "Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "production-mistral-code",
+      "name": "Production Node Code"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-05T10:00:00.000Z",
+  "versionId": "12.0.0"
+}

@@ -1,0 +1,466 @@
+{
+  "name": "La Bonne Alternance - API Cybersécurité",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-lba",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CONFIGURATION LA BONNE ALTERNANCE - CYBERSÉCURITÉ\nconsole.log('🔍 === CONFIGURATION LA BONNE ALTERNANCE ===');\n\n// Codes ROME pour cybersécurité/informatique\nconst codesRomeCyber = [\n  'M1802', // Expertise et support en systèmes d'information\n  'M1810', // Production et exploitation de systèmes d'information\n  'M1806', // Conseil et maîtrise d'ouvrage en systèmes d'information\n  'M1805'  // Études et développement informatique\n];\n\n// Mots-clés spécifiques cybersécurité\nconst motsClesCyber = [\n  'cybersécurité',\n  'cybersecurity', \n  'sécurité informatique',\n  'SOC',\n  'SIEM',\n  'pentest',\n  'analyste sécurité',\n  'cyber analyst',\n  'incident response'\n];\n\n// Localisation France (principales villes)\nconst localisations = [\n  { nom: 'Paris', lat: 48.8566, lon: 2.3522, radius: 50 },\n  { nom: 'Lyon', lat: 45.7640, lon: 4.8357, radius: 30 },\n  { nom: 'Marseille', lat: 43.2965, lon: 5.3698, radius: 30 },\n  { nom: 'Toulouse', lat: 43.6047, lon: 1.4442, radius: 30 },\n  { nom: 'Nantes', lat: 47.2184, lon: -1.5536, radius: 30 },\n  { nom: 'France entière', lat: 46.6034, lon: 1.8883, radius: 200 }\n];\n\nconsole.log('🎯 Codes ROME cybersécurité:', codesRomeCyber.join(', '));\nconsole.log('🔑 Mots-clés configurés:', motsClesCyber.length);\nconsole.log('📍 Zones géographiques:', localisations.length);\n\n// Génération des requêtes de recherche\nconst requetesRecherche = [];\n\n// Combiner mots-clés avec localisations\nmotsClesCyber.slice(0, 3).forEach(motCle => { // Limiter à 3 mots-clés principaux\n  localisations.slice(0, 3).forEach(zone => { // Limiter à 3 zones principales\n    requetesRecherche.push({\n      recherche_id: `lba-${motCle.toLowerCase().replace(/\\s+/g, '-')}-${zone.nom.toLowerCase().replace(/\\s+/g, '-')}-${Date.now()}`,\n      mot_cle: motCle,\n      zone_geo: zone,\n      codes_rome: codesRomeCyber.join(','),\n      api_params: {\n        latitude: zone.lat,\n        longitude: zone.lon,\n        radius: zone.radius,\n        romes: codesRomeCyber.join(','),\n        caller: 'n8n-cybersecurity-search',\n        diploma: 'Cap,Bac,BTS,Licence,Master' // Tous niveaux\n      },\n      timestamp: new Date().toISOString()\n    });\n  });\n});\n\nconsole.log('📋 Requêtes générées:', requetesRecherche.length);\nrequetesRecherche.forEach((req, index) => {\n  console.log(`${index + 1}. ${req.mot_cle} dans ${req.zone_geo.nom}`);\n});\n\nreturn requetesRecherche.map(req => ({ json: req }));"
+      },
+      "id": "config-lba-search",
+      "name": "🔍 Config Recherche LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://labonnealternance.pole-emploi.fr/api/v1/jobs/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "={{ $json.api_params.latitude }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $json.api_params.longitude }}"
+            },
+            {
+              "name": "radius",
+              "value": "={{ $json.api_params.radius }}"
+            },
+            {
+              "name": "romes",
+              "value": "={{ $json.api_params.romes }}"
+            },
+            {
+              "name": "caller",
+              "value": "{{ $json.api_params.caller }}"
+            },
+            {
+              "name": "diploma",
+              "value": "{{ $json.api_params.diploma }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-lba-api",
+      "name": "🌐 Appel API LBA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT RÉPONSE API LA BONNE ALTERNANCE\nconst rechercheContext = $('🔍 Config Recherche LBA').item.json;\nconst apiResponse = $input.item.json;\n\nconsole.log(`📊 === TRAITEMENT LBA: ${rechercheContext.mot_cle} ===`);\nconsole.log('📍 Zone:', rechercheContext.zone_geo.nom);\nconsole.log('🔍 Recherche ID:', rechercheContext.recherche_id);\n\n// Vérifier la structure de la réponse\nif (!apiResponse || !apiResponse.jobs) {\n  console.log('⚠️ Réponse API LBA invalide ou vide');\n  console.log('📋 Réponse reçue:', JSON.stringify(apiResponse, null, 2));\n  \n  return {\n    json: {\n      ...rechercheContext,\n      api_result: {\n        success: false,\n        error: 'Structure réponse invalide',\n        raw_response: apiResponse,\n        offers_count: 0,\n        offers: []\n      },\n      processing_status: 'API_ERROR'\n    }\n  };\n}\n\nconst jobs = apiResponse.jobs || [];\nconsole.log('📋 Offres reçues de LBA:', jobs.length);\n\nif (jobs.length === 0) {\n  console.log('⚠️ Aucune offre trouvée pour cette recherche');\n  return {\n    json: {\n      ...rechercheContext,\n      api_result: {\n        success: true,\n        offers_count: 0,\n        offers: [],\n        search_exhausted: true\n      },\n      processing_status: 'NO_RESULTS'\n    }\n  };\n}\n\n// Traitement et enrichissement des offres\nconst offresEnrichies = jobs.map((job, index) => {\n  // Normalisation des données LBA\n  const offreNormalisee = {\n    // Identifiants\n    offer_id: job.id || `lba-${rechercheContext.recherche_id}-${index}`,\n    external_id: job.id,\n    source: 'La Bonne Alternance',\n    source_type: 'api_officielle',\n    \n    // Données principales\n    title: job.title || job.intitule || 'Titre non spécifié',\n    company: job.company?.name || job.entreprise?.raison_sociale || 'Entreprise non spécifiée',\n    description: job.description || job.job?.description || '',\n    \n    // Contrat (LBA = 100% alternance)\n    contract_type: job.contractType || 'Alternance',\n    contract_duration: job.duration || job.duree || '',\n    \n    // Localisation\n    location: `${job.place?.city || job.lieu?.ville || ''} (${job.place?.zipCode || job.lieu?.codePostal || ''})`,\n    address: job.place?.address || job.lieu?.adresse || '',\n    coordinates: {\n      lat: job.place?.latitude || job.lieu?.latitude,\n      lon: job.place?.longitude || job.lieu?.longitude\n    },\n    \n    // Détails offre\n    salary: job.salary || job.salaire || 'Non spécifié',\n    start_date: job.startDate || job.dateDebut || '',\n    application_url: job.url || job.contact?.url || '',\n    \n    // Contact entreprise\n    contact_info: {\n      email: job.contact?.email || '',\n      phone: job.contact?.phone || job.contact?.telephone || '',\n      website: job.company?.url || job.entreprise?.url || ''\n    },\n    \n    // Métadonnées de recherche\n    search_context: {\n      keyword: rechercheContext.mot_cle,\n      location_searched: rechercheContext.zone_geo.nom,\n      rome_codes: rechercheContext.codes_rome,\n      search_id: rechercheContext.recherche_id\n    },\n    \n    // Timestamp\n    scraped_at: new Date().toISOString(),\n    posted_date: job.createdAt || job.dateCreation || '',\n    \n    // Analyse préliminaire pour cybersécurité\n    preliminary_analysis: {\n      contains_cyber_keywords: [\n        'cyber', 'sécurité', 'security', 'soc', 'siem', 'pentest'\n      ].some(kw => \n        (job.title || '').toLowerCase().includes(kw) ||\
+  \n        (job.description || '').toLowerCase().includes(kw)\n      ),\n      is_alternance_contract: true, // LBA = 100% alternance\n      location_match: rechercheContext.zone_geo.nom,\n      confidence_score: 0.8 // Base pour LBA car source fiable\n    }\n  };\n  \n  // Classification préliminaire\n  const isCyberSecurity = offreNormalisee.preliminary_analysis.contains_cyber_keywords;\n  const isAlternance = offreNormalisee.preliminary_analysis.is_alternance_contract;\n  \n  offreNormalisee.expected_mistral_classification = (isCyberSecurity && isAlternance) ? 'VALIDE' : 'INVALIDE';\n  \n  console.log(`📄 ${index + 1}. ${offreNormalisee.title} → ${offreNormalisee.expected_mistral_classification}`);\n  \n  return offreNormalisee;\n});\n\nconsole.log('✅ Enrichissement terminé:', offresEnrichies.length, 'offres');\nconst offresValides = offresEnrichies.filter(o => o.expected_mistral_classification === 'VALIDE');\nconsole.log('🎯 Offres potentiellement valides:', offresValides.length);\n\nreturn {\n  json: {\n    ...rechercheContext,\n    api_result: {\n      success: true,\n      offers_count: offresEnrichies.length,\n      offers_cyber_potential: offresValides.length,\n      offers: offresEnrichies,\n      source_api: 'La Bonne Alternance',\n      processed_at: new Date().toISOString()\n    },\n    processing_status: 'SUCCESS'\n  }\n};"
+      },
+      "id": "process-lba-response",
+      "name": "📊 Traiter Réponse LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT ERREUR API LA BONNE ALTERNANCE\nconst rechercheContext = $('🔍 Config Recherche LBA').item.json;\nconst errorData = $input.item;\n\nconsole.log(`❌ === ERREUR API LBA: ${rechercheContext.mot_cle} ===`);\nconsole.log('📍 Zone recherchée:', rechercheContext.zone_geo.nom);\nconsole.log('🔍 Code erreur:', errorData.httpCode);\nconsole.log('📋 Message:', errorData.message);\n\n// Analyse du type d'erreur LBA\nlet errorAnalysis = {\n  type: 'UNKNOWN_ERROR',\n  severity: 'HIGH',\n  suggestion: 'Réessayer plus tard',\n  is_retryable: false\n};\n\nswitch(errorData.httpCode) {\n  case 400:\n    errorAnalysis = {\n      type: 'BAD_REQUEST',\n      severity: 'MEDIUM',\n      suggestion: 'Vérifier les paramètres de recherche (coordonnées, codes ROME)',\n      is_retryable: false\n    };\n    break;\n  case 404:\n    errorAnalysis = {\n      type: 'ENDPOINT_NOT_FOUND',\n      severity: 'HIGH',\n      suggestion: 'API endpoint modifié, vérifier la documentation LBA',\n      is_retryable: false\n    };\n    break;\n  case 429:\n    errorAnalysis = {\n      type: 'RATE_LIMIT',\n      severity: 'LOW',\n      suggestion: 'Attendre avant de réessayer (rate limiting)',\n      is_retryable: true\n    };\n    break;\n  case 500:\n  case 502:\n  case 503:\n    errorAnalysis = {\n      type: 'SERVER_ERROR',\n      severity: 'MEDIUM',\n      suggestion: 'Problème serveur LBA, réessayer dans quelques minutes',\n      is_retryable: true\n    };\n    break;\n  default:\n    if (!errorData.httpCode) {\n      errorAnalysis = {\n        type: 'NETWORK_ERROR',\n        severity: 'MEDIUM',\n        suggestion: 'Problème réseau ou timeout',\n        is_retryable: true\n      };\n    }\n}\n\nconsole.log('🏷️ Type erreur:', errorAnalysis.type);\nconsole.log('⚠️ Sévérité:', errorAnalysis.severity);\nconsole.log('💡 Suggestion:', errorAnalysis.suggestion);\nconsole.log('🔄 Peut réessayer:', errorAnalysis.is_retryable);\n\nreturn {\n  json: {\n    ...rechercheContext,\n    api_result: {\n      success: false,\n      offers_count: 0,\n      offers: [],\n      error_details: {\n        http_code: errorData.httpCode,\n        message: errorData.message,\n        analysis: errorAnalysis,\n        raw_error: errorData,\n        timestamp: new Date().toISOString()\n      }\n    },\n    processing_status: 'API_ERROR'\n  }\n};"
+      },
+      "id": "process-lba-error",
+      "name": "❌ Traiter Erreur LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// EXTRACTION INDIVIDUELLE DES OFFRES LBA\nconst lbaResult = $input.item.json;\n\nconsole.log(`📄 === EXTRACTION OFFRES LBA ===`);\nconsole.log('🔍 Recherche:', lbaResult.mot_cle, 'dans', lbaResult.zone_geo.nom);\nconsole.log('📊 Statut traitement:', lbaResult.processing_status);\n\nif (lbaResult.processing_status !== 'SUCCESS' || !lbaResult.api_result.success) {\n  console.log('⚠️ Pas de données valides à extraire');\n  return [];\n}\n\nconst offers = lbaResult.api_result.offers || [];\nconsole.log('📋 Offres à extraire:', offers.length);\n\nif (offers.length === 0) {\n  console.log('⚠️ Aucune offre à extraire');\n  return [];\n}\n\n// Extraction individuelle de chaque offre\nconst extractedOffers = offers.map((offer, index) => {\n  console.log(`📄 Extraction ${index + 1}/${offers.length}: ${offer.title}`);\n  \n  return {\n    ...offer,\n    \n    // Contexte d'extraction\n    extraction_context: {\n      source_search: lbaResult.recherche_id,\n      extraction_index: index,\n      total_offers_in_batch: offers.length,\n      extracted_at: new Date().toISOString()\n    },\n    \n    // Statut pour étape suivante\n    ready_for_mistral: true,\n    processing_stage: 'EXTRACTED_FROM_LBA'\n  };\n});\n\nconsole.log('✅ Extraction terminée:', extractedOffers.length, 'offres individuelles');\n\nreturn extractedOffers.map(offer => ({ json: offer }));"
+      },
+      "id": "extract-lba-offers",
+      "name": "📄 Extraire Offres LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PRÉPARATION CLASSIFICATION MISTRAL POUR OFFRES LBA\nconst offer = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION MISTRAL LBA: ${offer.title} ===`);\nconsole.log('🏢 Entreprise:', offer.company);\nconsole.log('📍 Lieu:', offer.location);\nconsole.log('💼 Type contrat:', offer.contract_type);\nconsole.log('🎯 Classification attendue:', offer.expected_mistral_classification);\nconsole.log('📊 Confiance préliminaire:', offer.preliminary_analysis.confidence_score);\n\n// Prompt spécialisé pour offres La Bonne Alternance\nconst lbaClassificationPrompt = `CLASSIFICATION OFFRE ALTERNANCE CYBERSÉCURITÉ - LA BONNE ALTERNANCE :\n\n=== INFORMATIONS OFFRE ===\nTITRE: ${offer.title}\nENTREPRISE: ${offer.company}\nTYPE CONTRAT: ${offer.contract_type}\nLIEU: ${offer.location}\nDESCRIPTION: ${offer.description || 'Description non fournie'}\nSALAIRE: ${offer.salary}\nCONTACT: ${offer.contact_info.email || 'Non spécifié'}\n\n=== CONTEXTE IMPORTANT ===\nSOURCE: La Bonne Alternance (plateforme 100% alternance officielle)\nTYPE: Toutes les offres sont des contrats d'alternance/apprentissage\nFIABILITÉ: Source gouvernementale fiable\n\n=== CRITÈRES VALIDATION CYBERSÉCURITÉ ===\n✅ VALIDE si le poste concerne :\n- Cybersécurité, sécurité informatique\n- SOC (Security Operations Center)\n- Analyse de sécurité, incident response\n- Pentest, audit sécurité\n- Administration sécurité (SIEM, firewalls)\n- Développement outils cybersécurité\n\n❌ INVALIDE si le poste concerne :\n- Développement web/mobile classique\n- Support informatique général\n- Réseaux/système sans aspect sécurité\n- Marketing, commercial, RH\n- Autres domaines non-cyber\n\n=== ANALYSE REQUISE ===\nAnalyse le titre et la description pour déterminer si c'est un poste en cybersécurité.\nCOMPTE TENU que la source (LBA) garantit que c'est de l'alternance.\n\n=== RÉPONSE ATTENDUE ===\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [Explication courte pourquoi c'est cybersécurité ou pas]\nCONFIANCE: [0.1 à 1.0]`;\n\nconst mistralPayload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert en classification d'offres d'alternance cybersécurité. Tu analyses spécifiquement si une offre d'alternance (déjà confirmée) concerne le domaine de la cybersécurité. Source: La Bonne Alternance (officielle).\"\n    },\n    {\n      role: \"user\",\n      content: lbaClassificationPrompt\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 150\n};\n\nconsole.log('📋 Payload Mistral créé pour LBA');\nconsole.log('🔧 Température ultra-précise:', mistralPayload.temperature);\n\nreturn {\n  json: {\n    ...offer,\n    mistral_payload_string: JSON.stringify(mistralPayload),\n    classification_prompt: lbaClassificationPrompt,\n    mistral_config: {\n      model: mistralPayload.model,\n      temperature: mistralPayload.temperature,\n      max_tokens: mistralPayload.max_tokens,\n      optimized_for: 'lba_cybersecurity_classification'\n    },\n    prepared_for_mistral_at: new Date().toISOString(),\n    processing_stage: 'READY_FOR_MISTRAL_LBA'\n  }\n};"
+      },
+      "id": "prepare-mistral-lba",
+      "name": "🤖 Préparer Mistral LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.mistral_payload_string }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "mistral-classify-lba",
+      "name": "🌐 Mistral Classer LBA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT FINAL CLASSIFICATION LBA + MISTRAL\nconst originalOffer = $('🤖 Préparer Mistral LBA').item.json;\nconst mistralResponse = $input.item.json;\n\nconsole.log(`✅ === RÉSULTAT FINAL LBA: ${originalOffer.title} ===`);\nconsole.log('🏢 Entreprise:', originalOffer.company);\nconsole.log('📍 Localisation:', originalOffer.location);\nconsole.log('🎯 Attendu:', originalOffer.expected_mistral_classification);\n\nif (!mistralResponse.choices || !mistralResponse.choices[0] || !mistralResponse.choices[0].message) {\n  console.log('❌ Réponse Mistral invalide');\n  return {\n    json: {\n      // Données essentielles\n      offer_id: originalOffer.offer_id,\n      title: originalOffer.title,\n      company: originalOffer.company,\n      location: originalOffer.location,\n      source: 'La Bonne Alternance',\n      \n      // Résultat classification\n      final_classification: 'ERREUR_MISTRAL',\n      mistral_justification: 'Réponse API malformée',\n      is_valid_cybersecurity_alternance: false,\n      confidence_score: 0,\n      processing_status: 'ERROR'\n    }\n  };\n}\n\nconst mistralContent = mistralResponse.choices[0].message.content.trim();\nconsole.log('📝 Réponse Mistral complète:', mistralContent);\n\n// Extraction classification avec patterns robustes\nlet classification = 'INCERTAIN';\nlet justification = 'Non trouvée';\nlet confidence = 0.5;\n\n// Pattern CLASSIFICATION\nconst classificationMatch = mistralContent.match(/CLASSIFICATION:\\s*(VALIDE|INVALIDE)/i);\nif (classificationMatch) {\n  classification = classificationMatch[1].toUpperCase();\n}\n\n// Pattern JUSTIFICATION  \nconst justificationMatch = mistralContent.match(/JUSTIFICATION:\\s*([^\\n]+)/i);\nif (justificationMatch) {\n  justification = justificationMatch[1].trim();\n}\n\n// Pattern CONFIANCE\nconst confidenceMatch = mistralContent.match(/CONFIANCE:\\s*([0-9.]+)/i);\nif (confidenceMatch) {\n  confidence = parseFloat(confidenceMatch[1]);\n}\n\n// Validation de la prédiction\nconst isCorrectPrediction = classification === originalOffer.expected_mistral_classification;\nconst finalConfidence = classificationMatch ? Math.max(confidence, 0.8) : 0.3;\n\nconsole.log('🎯 Classification Mistral:', classification);\nconsole.log('📋 Justification:', justification);\nconsole.log('📊 Confiance:', finalConfidence);\nconsole.log('✅ Prédiction correcte:', isCorrectPrediction);\n\n// Résultat final optimisé pour LBA\nconst finalResult = {\n  // Identifiants\n  offer_id: originalOffer.offer_id,\n  external_id: originalOffer.external_id,\n  source: 'La Bonne Alternance',\n  source_type: 'api_officielle',\n  \n  // Données offre principales\n  title: originalOffer.title,\n  company: originalOffer.company,\n  description: originalOffer.description,\n  location: originalOffer.location,\n  contract_type: originalOffer.contract_type,\n  salary: originalOffer.salary,\n  application_url: originalOffer.application_url,\n  \n  // Contact\n  contact_email: originalOffer.contact_info.email,\n  contact_phone: originalOffer.contact_info.phone,\n  \n  // Résultat classification final\n  final_classification: classification,\n  mistral_justification: justification,\n  confidence_score: finalConfidence,\n  is_valid_cybersecurity_alternance: classification === 'VALIDE',\n  \n  // Contexte de recherche\n  search_keyword: originalOffer.search_context.keyword,\n  search_location: originalOffer.search_context.location_searched,\
+  \n  // Validation prédiction\n  expected_classification: originalOffer.expected_mistral_classification,\n  is_prediction_correct: isCorrectPrediction,\n  \n  // Métadonnées techniques\n  mistral_model: mistralResponse.model,\n  tokens_used: mistralResponse.usage,\n  processed_at: new Date().toISOString(),\n  processing_status: 'COMPLETED',\n  \n  // Scores et qualité\n  preliminary_confidence: originalOffer.preliminary_analysis.confidence_score,\n  final_confidence: finalConfidence,\n  source_reliability: 0.95, // LBA = source très fiable\n  overall_quality_score: (finalConfidence + 0.95) / 2 // Moyenne confiance + fiabilité source\n};\n\nif (classification === 'VALIDE') {\n  console.log('🎉 OFFRE CYBERSÉCURITÉ ALTERNANCE RETENUE:', originalOffer.title);\n  console.log('🏢 Entreprise:', originalOffer.company);\n  console.log('📧 Contact:', originalOffer.contact_info.email);\n} else {\n  console.log('❌ OFFRE NON-CYBERSÉCURITÉ:', originalOffer.title);\n  console.log('💭 Raison:', justification);\n}\n\nreturn { json: finalResult };"
+      },
+      "id": "final-result-lba",
+      "name": "🎯 Résultat Final LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GESTION ERREUR MISTRAL POUR LBA\nconst originalOffer = $('🤖 Préparer Mistral LBA').item.json;\nconst errorData = $input.item;\n\nconsole.log(`❌ === ERREUR MISTRAL LBA: ${originalOffer.title} ===`);\nconsole.log('📍 Source: La Bonne Alternance');\nconsole.log('🔍 Code erreur:', errorData.httpCode);\n\nreturn {\n  json: {\n    offer_id: originalOffer.offer_id,\n    title: originalOffer.title,\n    company: originalOffer.company,\n    source: 'La Bonne Alternance',\n    final_classification: 'ERREUR_MISTRAL',\n    is_valid_cybersecurity_alternance: false,\n    confidence_score: 0,\n    error_details: {\n      error_type: 'MISTRAL_API_ERROR',\n      error_code: errorData.httpCode,\n      error_message: errorData.message\n    },\n    processing_status: 'ERROR'\n  }\n};"
+      },
+      "id": "error-mistral-lba",
+      "name": "❌ Erreur Mistral LBA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-lba-valid",
+              "leftValue": "={{ $json.is_valid_cybersecurity_alternance }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-lba-cyber",
+      "name": "🔍 Filtrer Cyber Alternance",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lba-action",
+              "name": "action",
+              "value": "ALTERNANCE_CYBERSECURITE_TROUVEE",
+              "type": "string"
+            },
+            {
+              "id": "lba-titre",
+              "name": "titre",
+              "value": "{{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-entreprise",
+              "name": "entreprise",
+              "value": "{{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-lieu",
+              "name": "localisation",
+              "value": "{{ $json.location }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-salaire",
+              "name": "remuneration",
+              "value": "{{ $json.salary }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-contact",
+              "name": "contact",
+              "value": "{{ $json.contact_email }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-url",
+              "name": "lien_candidature",
+              "value": "{{ $json.application_url }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-justification",
+              "name": "pourquoi_valide",
+              "value": "{{ $json.mistral_justification }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-confiance",
+              "name": "score_confiance",
+              "value": "{{ $json.confidence_score }}",
+              "type": "number"
+            },
+            {
+              "id": "lba-resume",
+              "name": "resume",
+              "value": "✅ {{ $json.title }} chez {{ $json.company }} - Alternance Cybersécurité - {{ $json.location }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-cyber-alternance",
+      "name": "✅ Cyber Alternance Trouvée",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2220, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lba-rejected-action",
+              "name": "action",
+              "value": "OFFRE_NON_CYBERSECURITE",
+              "type": "string"
+            },
+            {
+              "id": "lba-rejected-titre",
+              "name": "titre",
+              "value": "{{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-rejected-entreprise",
+              "name": "entreprise",
+              "value": "{{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-rejected-raison",
+              "name": "raison_rejet",
+              "value": "{{ $json.final_classification }} - {{ $json.mistral_justification }}",
+              "type": "string"
+            },
+            {
+              "id": "lba-rejected-resume",
+              "name": "resume",
+              "value": "❌ {{ $json.title }} - Alternance mais pas cybersécurité",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-non-cyber",
+      "name": "❌ Non Cybersécurité",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2220, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🔍 Config Recherche LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Config Recherche LBA": {
+      "main": [
+        [
+          {
+            "node": "🌐 Appel API LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Appel API LBA": {
+      "main": [
+        [
+          {
+            "node": "📊 Traiter Réponse LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Traiter Erreur LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Traiter Réponse LBA": {
+      "main": [
+        [
+          {
+            "node": "📄 Extraire Offres LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Traiter Erreur LBA": {
+      "main": [
+        [
+          {
+            "node": "📄 Extraire Offres LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Extraire Offres LBA": {
+      "main": [
+        [
+          {
+            "node": "🤖 Préparer Mistral LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Préparer Mistral LBA": {
+      "main": [
+        [
+          {
+            "node": "🌐 Mistral Classer LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Mistral Classer LBA": {
+      "main": [
+        [
+          {
+            "node": "🎯 Résultat Final LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Erreur Mistral LBA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Résultat Final LBA": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrer Cyber Alternance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Erreur Mistral LBA": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrer Cyber Alternance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Filtrer Cyber Alternance": {
+      "main": [
+        [
+          {
+            "node": "✅ Cyber Alternance Trouvée",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Non Cybersécurité",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-lba",
+  "tags": ["lba", "alternance"]
+}

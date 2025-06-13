@@ -1,0 +1,307 @@
+{
+  "name": "PRODUCTION - Classification Locale Opérationnelle",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-production-locale",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GÉNÉRATEUR D'OFFRES RÉALISTES POUR PRODUCTION\nconsole.log('🏭 === PRODUCTION - CLASSIFICATION LOCALE ===');\n\nconst offresReelles = [\n  {\n    id: 'real-valide-1',\n    title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC H/F',\n    company: 'Orange Cyberdefense',\n    description: 'Formation en alternance de 24 mois pour devenir analyste cybersécurité au sein de notre SOC. Missions : surveillance des systèmes, analyse des incidents de sécurité, réponse aux alertes SIEM.',\n    contract_type: 'Contrat d\\'apprentissage',\n    location: 'Paris (75)',\n    source: 'France Travail',\n    url: 'https://candidat.francetravail.fr/offres/132CYBER001',\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'real-valide-2',\n    title: 'Alternance - Technicien Sécurité Informatique',\n    company: 'Thales',\n    description: 'Contrat de professionnalisation 18 mois. Formation sécurité des systèmes d\\'information, pentest, audit sécurité. Rejoignez notre équipe cybersécurité.',\n    contract_type: 'Contrat de professionnalisation',\n    location: 'Toulouse (31)',\n    source: 'La Bonne Alternance',\n    url: 'https://labonnealternance.pole-emploi.fr/THALES001',\n    attendu: 'VALIDE'\n  },\n  {\n    id: 'real-invalide-1',\n    title: 'Stage - Assistant Marketing Digital',\n    company: 'StartupCom',\n    description: 'Stage de 6 mois en marketing digital. Gestion des réseaux sociaux, création de contenu, campagnes publicitaires.',\n    contract_type: 'Stage',\n    location: 'Lyon (69)',\n    source: 'Indeed',\n    url: 'https://fr.indeed.com/stage-marketing-digital',\n    attendu: 'INVALIDE'\n  },\n  {\n    id: 'real-invalide-2',\n    title: 'CDI - Développeur Full Stack Senior',\n    company: 'TechCorp',\n    description: 'Poste CDI pour développeur expérimenté. React, Node.js, MongoDB. 5 ans d\\'expérience minimum.',\n    contract_type: 'CDI',\n    location: 'Marseille (13)',\n    source: 'APEC',\n    url: 'https://www.apec.fr/dev-fullstack-senior',\n    attendu: 'INVALIDE'\n  },\n  {\n    id: 'real-limite-1',\n    title: 'Apprentissage - Assistant Commercial Cyber',\n    company: 'CyberSales',\n    description: 'Contrat d\\'apprentissage pour assistant commercial spécialisé dans la vente de solutions cybersécurité.',\n    contract_type: 'Contrat d\\'apprentissage',\n    location: 'Nantes (44)',\n    source: 'Walt Community',\n    url: 'https://walt.community/cyber-commercial',\n    attendu: 'INVALIDE'\n  }\n];\n\nconsole.log('📊 Offres test production:', offresReelles.length);\noffresReelles.forEach((offre, index) => {\n  console.log(`${index + 1}. ${offre.title} → ${offre.attendu} (${offre.source})`);\n});\n\nreturn offresReelles.map(offre => ({ json: offre }));"
+      },
+      "id": "generateur-production",
+      "name": "📊 Offres Production",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CLASSIFICATION LOCALE OPTIMISÉE\nconst offre = $input.item.json;\n\nconsole.log(`🤖 === CLASSIFICATION LOCALE: ${offre.title} ===`);\nconsole.log(`🎯 Source: ${offre.source}, Attendu: ${offre.attendu}`);\n\n// ALGORITHME DE CLASSIFICATION AVANCÉ\nlet classification = 'INCERTAIN';\nlet confidence = 0.5;\nlet justification = 'Classification automatique';\nlet details = {};\n\n// DICTIONNAIRES ÉTENDUS\nconst motsAlternance = [\n  'apprentissage', 'alternance', 'contrat pro', 'contrat de professionnalisation',\n  'formation', 'apprenti', 'alternant'\n];\n\nconst motsCybersecurite = [\n  'cybersécurité', 'cyber sécurité', 'cyber-sécurité', 'cyberdefense',\n  'sécurité informatique', 'sécurité des si', 'sécurité numérique',\n  'soc', 'siem', 'pentest', 'audit sécurité', 'analyste sécurité',\n  'incident response', 'threat hunting', 'forensic', 'malware',\n  'firewall', 'intrusion', 'vulnerability', 'ethical hacking'\n];\n\nconst motsExclusifs = [\n  'stage', 'cdi', 'cdd', 'freelance', 'mission', 'consultant externe',\n  'marketing', 'commercial', 'vente', 'communication', 'rh',\n  'comptabilité', 'juridique', 'design', 'graphique'\n];\n\nconst motsNiveauSenior = [\n  'senior', 'expert', 'lead', 'manager', 'directeur', 'chef',\n  '5 ans', '10 ans', 'expérience confirmée', 'expérimenté'\n];\n\n// ANALYSE TEXTUELLE\nconst texteComplet = `${offre.title} ${offre.description} ${offre.contract_type}`.toLowerCase();\n\n// DÉTECTION ALTERNANCE\nconst scoreAlternance = motsAlternance.filter(mot => texteComplet.includes(mot.toLowerCase())).length;\nconst hasAlternance = scoreAlternance > 0;\n\n// DÉTECTION CYBERSÉCURITÉ  \nconst scoreCyber = motsCybersecurite.filter(mot => texteComplet.includes(mot.toLowerCase())).length;\nconst hasCyber = scoreCyber > 0;\n\n// DÉTECTION EXCLUSIONS\nconst scoreExclusif = motsExclusifs.filter(mot => texteComplet.includes(mot.toLowerCase())).length;\nconst hasExclusif = scoreExclusif > 0;\n\n// DÉTECTION NIVEAU SENIOR\nconst scoreSenior = motsNiveauSenior.filter(mot => texteComplet.includes(mot.toLowerCase())).length;\nconst hasSenior = scoreSenior > 0;\n\n// LOGIQUE DE DÉCISION AVANCÉE\nif (hasExclusif && !hasAlternance) {\n  classification = 'INVALIDE';\n  confidence = 0.9;\n  justification = `Mots exclusifs détectés: ${scoreExclusif} terme(s)`;\n} else if (hasSenior && !hasAlternance) {\n  classification = 'INVALIDE';\n  confidence = 0.85;\n  justification = 'Poste senior sans contrat alternance';\n} else if (!hasAlternance) {\n  classification = 'INVALIDE';\n  confidence = 0.8;\n  justification = 'Aucun contrat alternance détecté';\n} else if (!hasCyber) {\n  classification = 'INVALIDE';\n  confidence = 0.8;\n  justification = 'Domaine cybersécurité non détecté';\n} else if (hasAlternance && hasCyber && !hasExclusif) {\n  // CAS VALIDE : alternance + cyber + pas d'exclusion\n  classification = 'VALIDE';\n  confidence = Math.min(0.95, 0.7 + (scoreAlternance * 0.1) + (scoreCyber * 0.1));\n  justification = `Alternance (${scoreAlternance}) + Cybersécurité (${scoreCyber}) confirmés`;\n} else {\n  classification = 'INCERTAIN';\n  confidence = 0.5;\n  justification = 'Critères ambigus';\n}\n\n// MÉTADONNÉES DÉTAILLÉES\ndetails = {\n  scores: {\n    alternance: scoreAlternance,\n    cybersecurite: scoreCyber,\n    exclusif: scoreExclusif,\n    senior: scoreSenior\n  },\n  detecte: {\n    alternance: hasAlternance,\n    cybersecurite: hasCyber,\n    exclusif: hasExclusif,\n    senior: hasSenior\n  }\n};\n\n// VÉRIFICATION AVEC RÉSULTAT ATTENDU\nconst isCorrect = classification === offre.attendu;\nconst accuracyNote = isCorrect ? '✅ CORRECT' : '❌ ERREUR';\n\nconsole.log(`📊 Classification: ${classification} (${Math.round(confidence * 100)}%)`);\nconsole.log(`🎯 Attendu: ${offre.attendu}, Obtenu: ${classification} → ${accuracyNote}`);\nconsole.log(`💡 Justification: ${justification}`);\nconsole.log(`📈 Scores:`, JSON.stringify(details.scores));\n\nreturn {\n  json: {\n    ...offre,\n    classification_result: {\n      classification: classification,\n      confidence: confidence,\n      justification: justification,\n      is_correct: isCorrect,\n      accuracy_note: accuracyNote,\n      analysis_details: details,\n      method: 'CLASSIFICATION_LOCALE_OPTIMISEE',\n      algorithm_version: '2.0'\n    },\n    processed_at: new Date().toISOString(),\n    processing_status: 'CLASSIFIED_SUCCESS'\n  }\n};"
+      },
+      "id": "classification-locale-optimisee",
+      "name": "🤖 Classification Locale Optimisée",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-valide",
+              "leftValue": "={{ $json.classification_result.classification }}",
+              "rightValue": "VALIDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "router-classification",
+      "name": "🔍 Résultat ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "titre-valide",
+              "name": "titre",
+              "value": "{{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "entreprise-valide",
+              "name": "entreprise",
+              "value": "{{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "contrat-valide",
+              "name": "type_contrat",
+              "value": "{{ $json.contract_type }}",
+              "type": "string"
+            },
+            {
+              "id": "localisation-valide",
+              "name": "localisation",
+              "value": "{{ $json.location }}",
+              "type": "string"
+            },
+            {
+              "id": "source-valide",
+              "name": "source_emploi",
+              "value": "{{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "url-valide",
+              "name": "lien_offre",
+              "value": "{{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "confiance-valide",
+              "name": "score_confiance",
+              "value": "={{ $json.classification_result.confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "justification-valide",
+              "name": "justification",
+              "value": "{{ $json.classification_result.justification }}",
+              "type": "string"
+            },
+            {
+              "id": "accuracy-valide",
+              "name": "precision_test",
+              "value": "{{ $json.classification_result.accuracy_note }}",
+              "type": "string"
+            },
+            {
+              "id": "action-valide",
+              "name": "action_recommandee",
+              "value": "OFFRE_RETENUE_POUR_CANDIDATURE",
+              "type": "string"
+            },
+            {
+              "id": "statut-valide",
+              "name": "statut",
+              "value": "✅ VALIDE - Alternance Cybersécurité",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "offres-retenues",
+      "name": "✅ Offres Retenues",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "titre-rejete",
+              "name": "titre",
+              "value": "{{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "entreprise-rejete",
+              "name": "entreprise",
+              "value": "{{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "raison-rejet",
+              "name": "raison_rejet",
+              "value": "{{ $json.classification_result.classification }}",
+              "type": "string"
+            },
+            {
+              "id": "justification-rejete",
+              "name": "justification",
+              "value": "{{ $json.classification_result.justification }}",
+              "type": "string"
+            },
+            {
+              "id": "confiance-rejete",
+              "name": "score_confiance",
+              "value": "={{ $json.classification_result.confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "source-rejete",
+              "name": "source_emploi",
+              "value": "{{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "accuracy-rejete",
+              "name": "precision_test",
+              "value": "{{ $json.classification_result.accuracy_note }}",
+              "type": "string"
+            },
+            {
+              "id": "action-rejete",
+              "name": "action_recommandee",
+              "value": "OFFRE_ECARTEE",
+              "type": "string"
+            },
+            {
+              "id": "statut-rejete",
+              "name": "statut",
+              "value": "❌ REJETÉE - {{ $json.classification_result.classification }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "offres-rejetees",
+      "name": "❌ Offres Rejetées",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// RAPPORT FINAL DE PERFORMANCE\nconst offresRetenues = $('✅ Offres Retenues').all();\nconst offresRejetees = $('❌ Offres Rejetées').all();\nconst totalOffres = offresRetenues.length + offresRejetees.length;\n\nconsole.log('📊 === RAPPORT FINAL CLASSIFICATION ===');\nconsole.log(`🎯 Total traité: ${totalOffres} offres`);\nconsole.log(`✅ Retenues: ${offresRetenues.length}`);\nconsole.log(`❌ Rejetées: ${offresRejetees.length}`);\n\n// CALCUL PRÉCISION\nlet correctes = 0;\nlet incorrectes = 0;\n\n[...offresRetenues, ...offresRejetees].forEach(item => {\n  const data = item.json;\n  if (data.precision_test && data.precision_test.includes('CORRECT')) {\n    correctes++;\n  } else {\n    incorrectes++;\n  }\n});\n\nconst precision = totalOffres > 0 ? (correctes / totalOffres * 100).toFixed(1) : 0;\n\nconsole.log(`🎯 Précision: ${correctes}/${totalOffres} = ${precision}%`);\n\n// DÉTAIL DES OFFRES RETENUES\nconsole.log('\\n✅ OFFRES RETENUES:');\noffresRetenues.forEach((item, index) => {\n  const data = item.json;\n  console.log(`${index + 1}. ${data.titre} - ${data.entreprise}`);\n  console.log(`   🏢 ${data.type_contrat} à ${data.localisation}`);\n  console.log(`   📊 Confiance: ${Math.round(data.score_confiance * 100)}%`);\n  console.log(`   🔗 ${data.lien_offre}`);\n});\n\nconsole.log('\\n❌ OFFRES REJETÉES:');\noffresRejetees.forEach((item, index) => {\n  const data = item.json;\n  console.log(`${index + 1}. ${data.titre} - ${data.entreprise}`);\n  console.log(`   ❌ Raison: ${data.raison_rejet}`);\n  console.log(`   💡 ${data.justification}`);\n});\n\nreturn {\n  json: {\n    rapport_final: {\n      total_offres: totalOffres,\n      offres_retenues: offresRetenues.length,\n      offres_rejetees: offresRejetees.length,\n      precision_algorithme: `${precision}%`,\n      correctes: correctes,\n      incorrectes: incorrectes,\n      taux_reussite: precision >= 80 ? 'EXCELLENT' : precision >= 70 ? 'BON' : 'À AMÉLIORER'\n    },\n    recommendations: {\n      production_ready: precision >= 80,\n      action_recommandee: precision >= 80 ? \n        'DÉPLOYER EN PRODUCTION POUR SCRAPING RÉEL' :\n        'AFFINER ALGORITHME AVANT PRODUCTION',\n      prochaine_etape: precision >= 80 ?\n        'Intégrer avec APIs sites emploi' :\n        'Améliorer dictionnaires de mots-clés'\n    },\n    genere_le: new Date().toISOString(),\n    algorithme: 'Classification Locale Optimisée v2.0'\n  }\n};"
+      },
+      "id": "rapport-final",
+      "name": "📊 Rapport Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "📊 Offres Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Offres Production": {
+      "main": [
+        [
+          {
+            "node": "🤖 Classification Locale Optimisée",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Classification Locale Optimisée": {
+      "main": [
+        [
+          {
+            "node": "🔍 Résultat ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Résultat ?": {
+      "main": [
+        [
+          {
+            "node": "✅ Offres Retenues",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Offres Rejetées",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Offres Retenues": {
+      "main": [
+        [
+          {
+            "node": "📊 Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Offres Rejetées": {
+      "main": [
+        [
+          {
+            "node": "📊 Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "production-locale-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-production-classification-locale",
+  "tags": ["production", "classification-locale", "operationnel", "ready"]
+}

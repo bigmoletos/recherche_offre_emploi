@@ -1,0 +1,91 @@
+{
+  "name": "Test Debug Structure - Ultra Simple",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9555/scrape-offres",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"termes\": [\"alternance cybersécurité\"],\n  \"max_offres\": 2,\n  \"sources\": [\"pole_emploi\"]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "collecte-offres-api",
+      "name": "Collecte Offres API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Debug complet de la structure reçue\nconsole.log('='.repeat(50));\nconsole.log('🔍 DEBUG COMPLET - Structure API Response');\nconsole.log('='.repeat(50));\n\nconsole.log('Type de $json:', typeof $json);\nconsole.log('Contenu complet:');\nconsole.log(JSON.stringify($json, null, 2));\n\nconsole.log('\\n📊 Analyse structure:');\nconsole.log('Keys niveau 1:', Object.keys($json || {}));\n\n// Test chemins possibles pour les offres\nconst chemins = [\n  { nom: 'results.offres', valeur: $json.results?.offres },\n  { nom: 'offres', valeur: $json.offres },\n  { nom: 'data.offres', valeur: $json.data?.offres },\n  { nom: 'response.offres', valeur: $json.response?.offres }\n];\n\nchemins.forEach(chemin => {\n  if (chemin.valeur) {\n    console.log(`✅ Trouvé à ${chemin.nom}:`, Array.isArray(chemin.valeur) ? `${chemin.valeur.length} offres` : 'type: ' + typeof chemin.valeur);\n    if (Array.isArray(chemin.valeur) && chemin.valeur.length > 0) {\n      console.log('Première offre:', {\n        title: chemin.valeur[0].title,\n        company: chemin.valeur[0].company,\n        location: chemin.valeur[0].location\n      });\n    }\n  } else {\n    console.log(`❌ Rien trouvé à ${chemin.nom}`);\n  }\n});\n\nconsole.log('='.repeat(50));\n\nreturn { json: $json };"
+      },
+      "id": "debug-structure-complete",
+      "name": "Debug Structure Complète",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres API": {
+      "main": [
+        [
+          {
+            "node": "Debug Structure Complète",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-debug-simple",
+      "name": "Test Debug Simple"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T18:30:00.000Z",
+  "versionId": "1.0.0"
+}

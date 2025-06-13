@@ -1,0 +1,65 @@
+{
+  "name": "Test Mistral API Debug",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-node-123",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "{\n  \"model\": \"mistral-large-latest\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Tu es un assistant IA.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Dis bonjour.\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 100\n}",
+        "options": {}
+      },
+      "id": "mistral-test-node",
+      "name": "Test Mistral API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Test Mistral API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "test-debug-123",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "test-debug-123",
+  "tags": []
+}

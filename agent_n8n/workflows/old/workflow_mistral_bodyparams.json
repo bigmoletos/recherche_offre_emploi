@@ -1,0 +1,133 @@
+{
+  "name": "Mistral avec BodyParameters",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Données de test STATIQUES pour Mistral\nconst mistralData = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: \"Analyse cette offre d'emploi : Titre: Alternance Cybersécurité chez TechCorp à Paris. Cette offre correspond-elle à une alternance en cybersécurité ? Réponds uniquement par: VALIDE ou INVALIDE\"\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 10\n};\n\nconsole.log('🧪 Préparation données Mistral - BodyParameters');\nconsole.log('Model:', mistralData.model);\nconsole.log('Messages:', mistralData.messages.length);\n\nreturn {\n  json: {\n    model: mistralData.model,\n    messages: JSON.stringify(mistralData.messages),\n    temperature: mistralData.temperature,\n    max_tokens: mistralData.max_tokens,\n    ready: true\n  }\n};"
+      },
+      "id": "preparation-data",
+      "name": "Préparation Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "={{ $json.model }}"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.messages }}"
+            },
+            {
+              "name": "temperature",
+              "value": "={{ $json.temperature }}"
+            },
+            {
+              "name": "max_tokens",
+              "value": "={{ $json.max_tokens }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "mistral-api-call",
+      "name": "Mistral API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Vérification détaillée de la réponse Mistral\nconsole.log('🎯 === ANALYSE RÉPONSE MISTRAL ===');\nconsole.log('Type réponse:', typeof $json);\nconsole.log('Clés disponibles:', Object.keys($json || {}));\n\nif ($json && $json.choices && Array.isArray($json.choices) && $json.choices.length > 0) {\n  const choice = $json.choices[0];\n  const message = choice.message;\n  const content = message ? message.content : 'CONTENU_VIDE';\n  \n  console.log('✅ Structure Mistral valide');\n  console.log('Content:', content);\n  \n  const isValid = content && content.toUpperCase().includes('VALIDE');\n  \n  return {\n    json: {\n      success: true,\n      mistral_response: content,\n      classification: isValid ? 'VALIDE' : 'INVALIDE',\n      is_valid: isValid,\n      full_response: $json,\n      test_result: 'SUCCESS'\n    }\n  };\n} else {\n  console.log('❌ Structure Mistral invalide');\n  console.log('Réponse complète:', JSON.stringify($json, null, 2));\n  \n  return {\n    json: {\n      success: false,\n      error: 'Structure réponse Mistral invalide',\n      test_result: 'FAILED',\n      received_data: $json\n    }\n  };\n}"
+      },
+      "id": "analyse-reponse",
+      "name": "Analyse Réponse",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Préparation Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Data": {
+      "main": [
+        [
+          {
+            "node": "Mistral API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral API Call": {
+      "main": [
+        [
+          {
+            "node": "Analyse Réponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "mistral-bodyparams",
+      "name": "BodyParameters Test"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T22:30:00.000Z",
+  "versionId": "1.0.0"
+}

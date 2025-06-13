@@ -1,0 +1,114 @@
+{
+  "name": "Test Mistral Ultra Simple",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Préparation du JSON COMPLET pour Mistral\n// On évite JSON.parse() dans l'expression HTTP\n\nconst mistralPayload = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: \"Analyse cette offre d'emploi : Titre: Alternance Cybersécurité chez TechCorp à Paris. Cette offre correspond-elle à une alternance en cybersécurité ? Réponds uniquement par: VALIDE ou INVALIDE\"\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 10\n};\n\nconsole.log('🧪 Payload Mistral préparé:');\nconsole.log('JSON complet:', JSON.stringify(mistralPayload, null, 2));\nconsole.log('Taille:', JSON.stringify(mistralPayload).length, 'caractères');\n\n// Retour du payload COMPLET - pas de JSON.parse() nécessaire\nreturn {\n  json: mistralPayload\n};"
+      },
+      "id": "preparation-payload",
+      "name": "Préparation Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "mistral-api",
+      "name": "Mistral API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Analyse simple de la réponse Mistral\nconsole.log('🎯 === RÉPONSE MISTRAL REÇUE ===');\nconsole.log('Type:', typeof $json);\nconsole.log('Clés:', Object.keys($json || {}));\n\n// Vérification structure OpenAI/Mistral standard\nif ($json && $json.choices && Array.isArray($json.choices) && $json.choices.length > 0) {\n  const choice = $json.choices[0];\n  if (choice.message && choice.message.content) {\n    const content = choice.message.content.trim();\n    console.log('✅ Contenu reçu:', content);\n    \n    const isValid = content.toUpperCase().includes('VALIDE');\n    console.log('🔍 Classification:', isValid ? 'VALIDE' : 'INVALIDE');\n    \n    return {\n      json: {\n        success: true,\n        mistral_response: content,\n        classification: isValid ? 'VALIDE' : 'INVALIDE',\n        is_valid: isValid,\n        test_status: 'SUCCESS',\n        usage: $json.usage || 'Non disponible'\n      }\n    };\n  }\n}\n\n// En cas d'erreur ou structure inattendue\nconsole.log('❌ Structure réponse invalide');\nconsole.log('Réponse complète:', JSON.stringify($json, null, 2));\n\nreturn {\n  json: {\n    success: false,\n    error: 'Structure de réponse Mistral invalide',\n    test_status: 'FAILED',\n    received_data: $json\n  }\n};"
+      },
+      "id": "analyse-reponse",
+      "name": "Analyse Réponse",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Préparation Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Payload": {
+      "main": [
+        [
+          {
+            "node": "Mistral API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral API": {
+      "main": [
+        [
+          {
+            "node": "Analyse Réponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-mistral-ultra-simple",
+      "name": "Ultra Simple"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T23:00:00.000Z",
+  "versionId": "2.0.0"
+}

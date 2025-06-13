@@ -1,0 +1,256 @@
+{
+  "name": "Agent Alternance API - Production Complet",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-production",
+      "name": "Déclencheur Quotidien (9h)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:9555/health",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-api-health",
+      "name": "Test API Santé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9555/scrape-offres",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"termes\": [\n    \"alternance cybersécurité\",\n    \"alternance sécurité informatique\",\n    \"alternant cybersécurité\",\n    \"alternance ingénieur réseaux sécurité\",\n    \"alternance master réseaux télécommunication cybersécurité\"\n  ],\n  \"max_offres\": 50,\n  \"sources\": [\n    \"pole_emploi\",\n    \"apec\",\n    \"indeed\",\n    \"monster\",\n    \"hellowork\",\n    \"walt\",\n    \"bloom_alternance\",\n    \"portail_alternance\",\n    \"labonne_alternance\"\n  ]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "collecte-offres-production",
+      "name": "Collecte Offres Production",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log de production avec statistiques\nconst startTime = new Date();\nconsole.log('🚀 Démarrage analyse des offres - Production');\nconsole.log('📅 Timestamp:', startTime.toISOString());\nconsole.log('📊 API Response - Success:', $json.success);\nconsole.log('📊 Total offres récupérées:', $json.results?.total_offres || 0);\nconsole.log('📊 Offres dans le tableau:', $json.results?.offres?.length || 0);\nconsole.log('📊 Sources utilisées:', $json.metadata?.sources_utilisees || []);\nconsole.log('📊 Durée de scraping:', $json.metadata?.scraping_duration || 'N/A');\n\nif ($json.results && $json.results.offres && $json.results.offres.length > 0) {\n  console.log('✅ Données prêtes pour l\\'analyse IA');\n  \n  // Log des premières offres pour vérification\n  $json.results.offres.slice(0, 3).forEach((offre, index) => {\n    console.log(`📝 Offre ${index + 1} aperçu:`, {\n      title: (offre.title || 'N/A').substring(0, 50) + '...',\n      company: offre.company || 'N/A',\n      location: offre.location || 'N/A',\n      source: offre.scraper_source || 'N/A'\n    });\n  });\n} else {\n  console.log('⚠️ Aucune offre trouvée pour analyse');\n}\n\nreturn { json: $json };"
+      },
+      "id": "log-production",
+      "name": "Log Production",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results.offres",
+        "options": {}
+      },
+      "id": "separer-offres-production",
+      "name": "Séparer Offres",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Préparation optimisée pour production\nconst offre = $json;\n\n// Nettoyage robuste des données\nconst title = (offre.title || 'Titre non spécifié')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 150);\n\nconst company = (offre.company || 'Entreprise non spécifiée')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80);\n\nconst location = (offre.location || 'Lieu non spécifié')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 60);\n\nconst description = (offre.description || '')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 200);\n\n// Prompt optimisé pour Mistral\nconst prompt = `Analyse cette offre d'emploi pour déterminer si elle correspond à une alternance en cybersécurité ou sécurité informatique:\n\n• Titre: ${title}\n• Entreprise: ${company}\n• Localisation: ${location}\n• Description: ${description}\n\nCette offre est-elle une véritable alternance dans le domaine de la cybersécurité/sécurité informatique ?\n\nRéponds uniquement par: VALIDE ou INVALIDE`;\n\n// Retour optimisé\nreturn {\n  json: {\n    mistral_request: {\n      model: \"mistral-small-latest\",\n      messages: [\n        {\n          role: \"user\",\n          content: prompt\n        }\n      ],\n      temperature: 0.1,\n      max_tokens: 10\n    },\n    original_offre: offre,\n    cleaned_data: {\n      title: title,\n      company: company,\n      location: location,\n      description: description\n    }\n  }\n};"
+      },
+      "id": "preparation-production",
+      "name": "Préparation Production",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ $json.mistral_request }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "classification-production",
+      "name": "Classification Production",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Traitement des résultats avec gestion d'erreurs\nconst mistralResponse = $json;\nconst preparationData = $('Préparation Production').item.json;\n\nlet aiResponse = 'ERREUR_ANALYSE';\nlet isValid = false;\n\ntry {\n  aiResponse = mistralResponse.choices?.[0]?.message?.content || 'REPONSE_VIDE';\n  \n  // Analyse robuste de la réponse\n  const responseUpper = aiResponse.toUpperCase().trim();\n  isValid = responseUpper === 'VALIDE' || \n           (responseUpper.includes('VALIDE') && !responseUpper.includes('INVALIDE'));\n           \n} catch (error) {\n  console.log('❌ Erreur traitement Mistral:', error.message);\n  aiResponse = 'ERREUR_TRAITEMENT';\n}\n\n// Résultat final structuré\nreturn {\n  json: {\n    // Informations offre\n    title: preparationData.cleaned_data.title,\n    company: preparationData.cleaned_data.company,\n    location: preparationData.cleaned_data.location,\n    description: preparationData.cleaned_data.description,\n    url: preparationData.original_offre.url || 'URL_NON_DISPONIBLE',\n    scraper_source: preparationData.original_offre.scraper_source || 'SOURCE_INCONNUE',\n    search_term: preparationData.original_offre.search_term || 'TERME_INCONNU',\n    \n    // Résultats analyse IA\n    ai_response: aiResponse,\n    is_valid: isValid,\n    validation_status: isValid ? 'VALIDE' : 'INVALIDE',\n    \n    // Métadonnées\n    analyzed_at: new Date().toISOString(),\n    mistral_model: 'mistral-small-latest',\n    processing_node: 'production-classifier'\n  }\n};"
+      },
+      "id": "formatage-production",
+      "name": "Formatage Production",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Rapport final de production avec métriques complètes\nconst allResults = $input.all();\nconst processEndTime = new Date();\n\n// Calculs statistiques\nconst validOffers = allResults.filter(item => item.json.is_valid === true);\nconst invalidOffers = allResults.filter(item => item.json.is_valid === false);\nconst errorOffers = allResults.filter(item => \n  item.json.ai_response.includes('ERREUR') || \n  item.json.ai_response === 'REPONSE_VIDE'\n);\n\n// Analyse par sources\nconst sourceStats = {};\nallResults.forEach(item => {\n  const source = item.json.scraper_source;\n  if (!sourceStats[source]) {\n    sourceStats[source] = { total: 0, valid: 0, invalid: 0 };\n  }\n  sourceStats[source].total++;\n  if (item.json.is_valid) sourceStats[source].valid++;\n  else sourceStats[source].invalid++;\n});\n\n// Analyse géographique\nconst locationStats = {};\nvalidOffers.forEach(item => {\n  const location = item.json.location;\n  locationStats[location] = (locationStats[location] || 0) + 1;\n});\n\nconst topLocations = Object.entries(locationStats)\n  .sort(([,a], [,b]) => b - a)\n  .slice(0, 10)\n  .map(([location, count]) => ({ location, count }));\n\n// Rapport final structuré\nconst rapport = {\n  execution_metadata: {\n    execution_date: processEndTime.toISOString(),\n    workflow_version: 'production-v1.0',\n    processing_duration_ms: 'calculé_en_amont',\n    n8n_execution_id: 'auto-generated'\n  },\n  \n  performance_metrics: {\n    total_analyzed: allResults.length,\n    valid_offers: validOffers.length,\n    invalid_offers: invalidOffers.length,\n    error_count: errorOffers.length,\n    success_rate: allResults.length > 0 ? Math.round((validOffers.length / allResults.length) * 100) : 0,\n    error_rate: allResults.length > 0 ? Math.round((errorOffers.length / allResults.length) * 100) : 0\n  },\n  \n  source_breakdown: sourceStats,\n  \n  geographic_analysis: {\n    total_locations: Object.keys(locationStats).length,\n    top_locations: topLocations,\n    location_distribution: locationStats\n  },\n  \n  validated_offers: validOffers.map(item => ({\n    title: item.json.title,\n    company: item.json.company,\n    location: item.json.location,\n    url: item.json.url,\n    source: item.json.scraper_source,\n    search_term: item.json.search_term,\n    ai_confidence: item.json.ai_response,\n    analyzed_at: item.json.analyzed_at\n  })),\n  \n  rejected_offers: invalidOffers.map(item => ({\n    title: item.json.title,\n    company: item.json.company,\n    location: item.json.location,\n    source: item.json.scraper_source,\n    rejection_reason: item.json.ai_response\n  })),\n  \n  processing_errors: errorOffers.map(item => ({\n    title: item.json.title,\n    source: item.json.scraper_source,\n    error_type: item.json.ai_response\n  }))\n};\n\n// Logs de production\nconsole.log('📊 === RAPPORT FINAL DE PRODUCTION ===');\nconsole.log('📈 Offres analysées:', rapport.performance_metrics.total_analyzed);\nconsole.log('✅ Offres validées:', rapport.performance_metrics.valid_offers);\nconsole.log('❌ Offres rejetées:', rapport.performance_metrics.invalid_offers);\nconsole.log('🔥 Taux de succès:', rapport.performance_metrics.success_rate + '%');\nconsole.log('🏆 Top 3 localisations:', topLocations.slice(0, 3));\nconsole.log('🔧 Sources actives:', Object.keys(sourceStats).length);\nconsole.log('📅 Exécution terminée à:', processEndTime.toISOString());\n\nreturn [{ json: rapport }];"
+      },
+      "id": "rapport-production",
+      "name": "Rapport Production",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Déclencheur Quotidien (9h)": {
+      "main": [
+        [
+          {
+            "node": "Test API Santé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Santé": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres Production": {
+      "main": [
+        [
+          {
+            "node": "Log Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Production": {
+      "main": [
+        [
+          {
+            "node": "Séparer Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer Offres": {
+      "main": [
+        [
+          {
+            "node": "Préparation Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Production": {
+      "main": [
+        [
+          {
+            "node": "Classification Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification Production": {
+      "main": [
+        [
+          {
+            "node": "Formatage Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatage Production": {
+      "main": [
+        [
+          {
+            "node": "Rapport Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "production-complet",
+      "name": "Production Complet"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T19:30:00.000Z",
+  "versionId": "2.0.0"
+}

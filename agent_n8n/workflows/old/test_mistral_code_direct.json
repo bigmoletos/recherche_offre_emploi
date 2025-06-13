@@ -1,0 +1,93 @@
+{
+  "name": "Test Mistral Code Direct",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Données de test\nconst testData = {\n  title: \"Alternance Cybersécurité\",\n  company: \"TechCorp\",\n  location: \"Paris\"\n};\n\nconsole.log('📝 Données de test préparées:', testData);\n\nreturn {\n  json: testData\n};"
+      },
+      "id": "preparation-donnees",
+      "name": "Préparation Données",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "language": "javascript",
+        "jsCode": "// Appel direct API Mistral avec fetch\n// Évite tous les problèmes du nœud HTTP Request\n\nconst fetch = require('node-fetch');\n\nasync function callMistralAPI() {\n  try {\n    console.log('🚀 Appel direct API Mistral...');\n    \n    // ATTENTION: Remplacez par votre vraie clé API\n    const API_KEY = 'VOTRE_CLE_API_MISTRAL_ICI';\n    \n    if (API_KEY === 'VOTRE_CLE_API_MISTRAL_ICI') {\n      throw new Error('❌ Veuillez remplacer VOTRE_CLE_API_MISTRAL_ICI par votre vraie clé API');\n    }\n    \n    // Construction du prompt\n    const prompt = `Analyse cette offre d'emploi : Titre: ${$input.first().json.title} chez ${$input.first().json.company} à ${$input.first().json.location}. Cette offre correspond-elle à une alternance en cybersécurité ? Réponds uniquement par: VALIDE ou INVALIDE`;\n    \n    // Payload Mistral\n    const payload = {\n      model: \"mistral-small-latest\",\n      messages: [\n        {\n          role: \"user\",\n          content: prompt\n        }\n      ],\n      temperature: 0.1,\n      max_tokens: 10\n    };\n    \n    console.log('📤 Payload:', JSON.stringify(payload, null, 2));\n    \n    // Appel API\n    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'Authorization': `Bearer ${API_KEY}`\n      },\n      body: JSON.stringify(payload)\n    });\n    \n    console.log('📥 Status:', response.status);\n    console.log('📥 Headers:', Object.fromEntries(response.headers));\n    \n    if (!response.ok) {\n      const errorText = await response.text();\n      throw new Error(`API Error ${response.status}: ${errorText}`);\n    }\n    \n    const data = await response.json();\n    console.log('✅ Réponse reçue:', JSON.stringify(data, null, 2));\n    \n    if (data.choices && data.choices[0] && data.choices[0].message) {\n      const content = data.choices[0].message.content;\n      const isValid = content.toUpperCase().includes('VALIDE');\n      \n      console.log('🎯 Réponse Mistral:', content);\n      console.log('🔍 Classification:', isValid ? 'VALIDE' : 'INVALIDE');\n      \n      return {\n        success: true,\n        mistral_response: content,\n        classification: isValid ? 'VALIDE' : 'INVALIDE',\n        is_valid: isValid,\n        method: 'direct_fetch',\n        usage: data.usage\n      };\n    } else {\n      throw new Error('Structure de réponse inattendue');\n    }\n    \n  } catch (error) {\n    console.log('❌ Erreur:', error.message);\n    return {\n      success: false,\n      error: error.message,\n      method: 'direct_fetch'\n    };\n  }\n}\n\n// Exécution\nreturn await callMistralAPI();"
+      },
+      "id": "appel-mistral-direct",
+      "name": "Appel Mistral Direct",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Affichage des résultats finaux\nconsole.log('📊 === RÉSULTATS FINAUX ===');\nconsole.log('Succès:', $json.success);\n\nif ($json.success) {\n  console.log('✅ Test réussi!');\n  console.log('Réponse Mistral:', $json.mistral_response);\n  console.log('Classification:', $json.classification);\n  console.log('Valide:', $json.is_valid);\n  console.log('Usage:', $json.usage);\n} else {\n  console.log('❌ Test échoué!');\n  console.log('Erreur:', $json.error);\n}\n\nreturn { json: $json };"
+      },
+      "id": "affichage-resultats",
+      "name": "Affichage Résultats",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Préparation Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Données": {
+      "main": [
+        [
+          {
+            "node": "Appel Mistral Direct",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Appel Mistral Direct": {
+      "main": [
+        [
+          {
+            "node": "Affichage Résultats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-mistral-code-direct",
+      "name": "Code Direct"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T23:30:00.000Z",
+  "versionId": "3.0.0"
+}

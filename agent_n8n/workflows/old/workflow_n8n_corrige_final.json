@@ -1,0 +1,288 @@
+{
+  "name": "Agent Alternance Cybersécurité - Corrigé",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "f4f6f1bb-f7b4-4d6e-8b5a-0a4a4f0e8e4e",
+      "name": "Déclencheur Quotidien",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5555/health",
+        "options": {}
+      },
+      "id": "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+      "name": "Test API Santé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5555/scrape-offres",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"termes\": [\"alternance cybersécurité\", \"alternance sécurité informatique\"],\n  \"max_offres\": 5\n}",
+        "options": {}
+      },
+      "id": "b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2",
+      "name": "Collecte Offres API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "offres",
+        "options": {}
+      },
+      "id": "c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3",
+      "name": "Séparer Offres",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralApi",
+        "model": "mistral-large-latest",
+        "messages": {
+          "messageValues": [
+            {
+              "role": "user",
+              "content": "=Analysez cette offre d'emploi et déterminez si c'est une VRAIE ALTERNANCE en cybersécurité/télécommunications.\n\nOFFRE À ANALYSER:\nTitre: {{ $json.title }}\nEntreprise: {{ $json.company }}\nLieu: {{ $json.location }}\nDescription: {{ $json.description }}\nSource: {{ $json.scraper_source }}\n\nCRITÈRES D'ÉVALUATION:\n✅ VALIDE si:\n- Contrat d'alternance/apprentissage explicite\n- Domaine cybersécurité/sécurité informatique/télécommunications\n- Formation + expérience pratique mentionnées\n- Entreprise légitime (pas de spam)\n\n❌ INVALIDE si:\n- Simple stage ou emploi classique\n- Domaine différent (développement web basique, marketing...)\n- Offre incomplète ou suspecte\n- Formation seule sans alternance\n\nRÉPONDEZ EXACTEMENT au format JSON:\n{\n    \"is_valid\": true,\n    \"score_pertinence\": 85,\n    \"domaine\": \"cybersécurité\",\n    \"type_contrat\": \"alternance\",\n    \"raison\": \"explication brève de la décision\",\n    \"mots_cles\": [\"cybersécurité\", \"alternance\", \"formation\"]\n}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 300
+        }
+      },
+      "id": "d4d4d4d4-d4d4-d4d4-d4d4-d4d4d4d4d4d4",
+      "name": "Classification IA Mistral",
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralAi",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsing de la réponse IA et enrichissement des données\nconst offre = $input.first().json;\nconst aiResponse = $input.last().json.response;\n\n// Tentative de parsing JSON de la réponse IA\nlet aiResult;\ntry {\n  // Extraction du JSON depuis la réponse IA\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    aiResult = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error('Pas de JSON trouvé dans la réponse');\n  }\n} catch (error) {\n  // Fallback si parsing échoue\n  aiResult = {\n    is_valid: false,\n    score_pertinence: 0,\n    domaine: 'erreur_parsing',\n    type_contrat: 'inconnu',\n    raison: 'Erreur parsing réponse IA',\n    mots_cles: []\n  };\n}\n\n// Enrichissement de l'offre avec les résultats IA\nconst offreEnrichie = {\n  ...offre,\n  is_valid: aiResult.is_valid || false,\n  score_pertinence: aiResult.score_pertinence || 0,\n  domaine_detecte: aiResult.domaine || 'inconnu',\n  type_contrat_detecte: aiResult.type_contrat || 'inconnu',\n  ai_raison: aiResult.raison || '',\n  ai_mots_cles: aiResult.mots_cles || [],\n  ai_response: aiResponse,\n  ai_processed_at: new Date().toISOString(),\n  validation_status: aiResult.is_valid ? 'VALIDE' : 'INVALIDE'\n};\n\nreturn offreEnrichie;"
+      },
+      "id": "e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5",
+      "name": "Enrichissement Données",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6",
+      "name": "Filtrage Offres Valides",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agrégation de toutes les offres (valides et invalides)\nconst toutesLesOffres = $input.all().map(item => item.json);\n\n// Séparation valides/invalides\nconst offresValides = toutesLesOffres.filter(offre => offre.is_valid === true);\nconst offresInvalides = toutesLesOffres.filter(offre => offre.is_valid !== true);\n\n// Calcul des statistiques\nconst stats = {\n  total_offres: toutesLesOffres.length,\n  offres_valides: offresValides.length,\n  offres_invalides: offresInvalides.length,\n  taux_validation: toutesLesOffres.length > 0 ? \n    ((offresValides.length / toutesLesOffres.length) * 100).toFixed(1) + '%' : '0%',\n  score_moyen: toutesLesOffres.length > 0 ?\n    (toutesLesOffres.reduce((sum, o) => sum + (o.score_pertinence || 0), 0) / toutesLesOffres.length).toFixed(1) : 0\n};\n\n// Analyse par source\nconst sourceStats = {};\ntoutesLesOffres.forEach(offre => {\n  const source = offre.scraper_source || 'inconnu';\n  if (!sourceStats[source]) {\n    sourceStats[source] = {\n      total: 0,\n      valides: 0\n    };\n  }\n  sourceStats[source].total++;\n  if (offre.is_valid) {\n    sourceStats[source].valides++;\n  }\n});\n\n// Top entreprises\nconst entreprises = {};\noffresValides.forEach(offre => {\n  const entreprise = offre.company || 'Inconnue';\n  if (!entreprises[entreprise]) {\n    entreprises[entreprise] = {\n      nom: entreprise,\n      nb_offres: 0,\n      score_moyen: 0,\n      locations: new Set()\n    };\n  }\n  entreprises[entreprise].nb_offres++;\n  entreprises[entreprise].score_moyen += offre.score_pertinence || 0;\n  entreprises[entreprise].locations.add(offre.location || 'Non spécifié');\n});\n\n// Conversion Set en Array pour JSON\nObject.values(entreprises).forEach(ent => {\n  ent.score_moyen = ent.nb_offres > 0 ? (ent.score_moyen / ent.nb_offres).toFixed(1) : 0;\n  ent.locations = Array.from(ent.locations).join(', ');\n});\n\nconst topEntreprises = Object.values(entreprises)\n  .sort((a, b) => b.nb_offres - a.nb_offres)\n  .slice(0, 5);\n\n// Rapport final\nconst rapport = {\n  timestamp: new Date().toISOString(),\n  execution_reussie: true,\n  statistiques: stats,\n  analyse_sources: sourceStats,\n  top_entreprises: topEntreprises,\n  toutes_offres: toutesLesOffres,\n  offres_valides_uniquement: offresValides,\n  resume_execution: {\n    message: `Analyse terminée avec succès ! ${stats.offres_valides} offres valides sur ${stats.total_offres} collectées (${stats.taux_validation})`,\n    prochaine_etape: \"Rapport disponible pour consultation\",\n    sources_actives: Object.keys(sourceStats)\n  }\n};\n\nreturn rapport;"
+      },
+      "id": "g7g7g7g7-g7g7-g7g7-g7g7-g7g7g7g7g7g7",
+      "name": "Agrégation Finale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Génération d'un rapport lisible pour affichage\nconst data = $input.first().json;\n\nconst rapport = `\n🎯 RAPPORT AGENT ALTERNANCE CYBERSÉCURITÉ\n====================================================\n⏰ Exécution: ${new Date().toLocaleString('fr-FR')}\n\n📊 STATISTIQUES GLOBALES:\n✅ Offres valides: ${data.statistiques.offres_valides}\n❌ Offres invalides: ${data.statistiques.offres_invalides}\n📈 Total collecté: ${data.statistiques.total_offres}\n💯 Taux validation: ${data.statistiques.taux_validation}\n⭐ Score moyen: ${data.statistiques.score_moyen}/100\n\n🏢 TOP ENTREPRISES (offres valides):\n${data.top_entreprises.length > 0 ? \n  data.top_entreprises.map((ent, i) => \n    `${i+1}. ${ent.nom} - ${ent.nb_offres} offre(s) - Score: ${ent.score_moyen}/100`\n  ).join('\\n') : \n  'Aucune entreprise (pas d\\'offres valides)'}\n\n📍 ANALYSE PAR SOURCE:\n${Object.entries(data.analyse_sources).map(([source, stats]) => \n  `${source}: ${stats.valides}/${stats.total} valides (${stats.total > 0 ? ((stats.valides/stats.total)*100).toFixed(1) : 0}%)`\n).join('\\n')}\n\n🎯 OFFRES VALIDES DÉTAILLÉES:\n${data.offres_valides_uniquement.length > 0 ?\n  data.offres_valides_uniquement.map((offre, i) => \n    `${i+1}. ${offre.title}\\n   🏢 ${offre.company}\\n   📍 ${offre.location}\\n   ⭐ Score: ${offre.score_pertinence}/100\\n   🔗 ${offre.url}\\n   💭 IA: ${offre.ai_raison}\\n`\n  ).join('\\n') :\n  'Aucune offre valide trouvée'}\n\n${data.resume_execution.message}\n🚀 ${data.resume_execution.prochaine_etape}\n\n====================================================\n`;\n\nreturn {\n  rapport_formaté: rapport,\n  data_complète: data,\n  status: 'success'\n};"
+      },
+      "id": "h8h8h8h8-h8h8-h8h8-h8h8-h8h8h8h8h8h8",
+      "name": "Formatage Rapport",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2020,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Déclencheur Quotidien": {
+      "main": [
+        [
+          {
+            "node": "Test API Santé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Santé": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres API": {
+      "main": [
+        [
+          {
+            "node": "Séparer Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer Offres": {
+      "main": [
+        [
+          {
+            "node": "Classification IA Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification IA Mistral": {
+      "main": [
+        [
+          {
+            "node": "Enrichissement Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichissement Données": {
+      "main": [
+        [
+          {
+            "node": "Filtrage Offres Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrage Offres Valides": {
+      "main": [
+        [
+          {
+            "node": "Agrégation Finale",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agrégation Finale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agrégation Finale": {
+      "main": [
+        [
+          {
+            "node": "Formatage Rapport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow_agent_alternance_corrige",
+  "tags": [
+    {
+      "id": "tag1",
+      "name": "alternance"
+    },
+    {
+      "id": "tag2",
+      "name": "cybersécurité"
+    },
+    {
+      "id": "tag3",
+      "name": "IA"
+    }
+  ]
+}

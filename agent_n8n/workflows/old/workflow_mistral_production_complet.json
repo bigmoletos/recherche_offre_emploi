@@ -1,0 +1,180 @@
+{
+  "name": "Classification Mistral - TOUS ITEMS",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a8c7f4d1-234e-4567-8901-23456789abcd",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// GÉNÉRATEUR D'OFFRES TEST RÉALISTES POUR MISTRAL-LARGE\n\nconsole.log('🧪 === GÉNÉRATION OFFRES TEST RÉALISTES ===');\n\n// Offres réalistes pour tester la classification Mistral Large\nconst offresTest = [\n  {\n    id: 'test-valide-1',\n    title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n    company: 'Orange Cyberdefense',\n    description: 'Nous proposons un contrat d\\'apprentissage de 24 mois pour former un analyste cybersécurité au sein de notre SOC (Security Operations Center). Missions : surveillance des systèmes d\\'information, analyse des incidents de sécurité, réponse aux alertes SIEM, veille technologique. Formation : Master 2 cybersécurité en alternance. Rythme : 3 semaines en entreprise / 1 semaine à l\\'école.',\n    location: 'Paris, France',\n    source: 'TEST_REALISTE',\n    url: 'https://jobs.orange.com/apprentissage-cybersec',\n    keywords: ['apprentissage', 'cybersécurité', 'SOC', 'alternance'],\n    date_posted: '2024-01-15',\n    contract_type: 'Contrat d\\'apprentissage'\n  },\n  {\n    id: 'test-invalide-1',\n    title: 'Stage - Marketing Digital et Communication',\n    company: 'AgenceComm',\n    description: 'Stage de 6 mois en marketing digital. Missions : gestion des réseaux sociaux, création de contenu, campagnes publicitaires, analyse des performances. Recherche étudiant en Master Marketing. Stage non rémunéré avec convention obligatoire.',\n    location: 'Lyon, France',\n    source: 'TEST_REALISTE',\n    url: 'https://jobs.agencecomm.fr/stage-marketing',\n    keywords: ['stage', 'marketing', 'digital', 'communication'],\n    date_posted: '2024-01-10',\n    contract_type: 'Stage'\n  },\n  {\n    id: 'test-valide-2',\n    title: 'Alternance - Pentesteur Junior en Formation',\n    company: 'Wavestone Cybersecurity',\n    description: 'Formation alternance de 2 ans pour devenir pentesteur. Missions : tests d\\'intrusion sur applications web, audit de sécurité réseau, rédaction de rapports de vulnérabilités, accompagnement par experts. Formation : Master cybersécurité spécialité pentest. Contrat de professionnalisation.',\n    location: 'Marseille, France',\n    source: 'TEST_REALISTE',\n    url: 'https://careers.wavestone.com/alternance-pentest',\n    keywords: ['alternance', 'pentest', 'cybersécurité', 'audit'],\n    date_posted: '2024-01-12',\n    contract_type: 'Contrat de professionnalisation'\n  },\n  {\n    id: 'test-invalide-2',\n    title: 'CDI - Ingénieur Cybersécurité Senior 7+ ans',\n    company: 'Thales Group',\n    description: 'Poste d\\'ingénieur cybersécurité senior avec 7+ années d\\'expérience. Missions : architecture sécurité, gestion d\\'équipe, audits complexes, relation clients. Salaire 65-80k€. Télétravail partiel possible.',\n    location: 'Toulouse, France',\n    source: 'TEST_REALISTE',\n    url: 'https://jobs.thalesgroup.com/senior-cybersec',\n    keywords: ['CDI', 'senior', 'cybersécurité', 'expérience'],\n    date_posted: '2024-01-08',\n    contract_type: 'CDI'\n  },\n  {\n    id: 'test-valide-3',\n    title: 'Apprentissage - Consultant GRC Sécurité Débutant',\n    company: 'Deloitte Cyber Risk',\n    description: 'Contrat d\\'apprentissage en Gouvernance, Risque et Conformité (GRC) cybersécurité. Missions : analyse des risques cyber, mise en conformité RGPD/ISO27001, audit interne, formation aux enjeux réglementaires. Profil : étudiant Master 2 sécurité informatique. Durée : 24 mois.',\n    location: 'Nantes, France',\n    source: 'TEST_REALISTE',\n    url: 'https://careers.deloitte.fr/apprentissage-grc',\n    keywords: ['apprentissage', 'GRC', 'cybersécurité', 'conformité'],\n    date_posted: '2024-01-14',\n    contract_type: 'Contrat d\\'apprentissage'\n  },\n  {\n    id: 'test-invalide-3',\n    title: 'Stage - Sécurité des Bâtiments et Surveillance',\n    company: 'Securitas France',\n    description: 'Stage de 4 mois en sécurité physique des bâtiments. Missions : surveillance vidéo, contrôle d\\'accès, rondes de sécurité, gestion des alarmes. Formation sécurité agent de prévention et de sécurité.',\n    location: 'Bordeaux, France',\n    source: 'TEST_REALISTE',\n    url: 'https://jobs.securitas.fr/stage-surveillance',\n    keywords: ['stage', 'sécurité physique', 'surveillance', 'bâtiment'],\n    date_posted: '2024-01-09',\n    contract_type: 'Stage'\n  }\n];\n\nconsole.log('📋 Offres test générées:', offresTest.length);\nconsole.log('✅ Offres VALIDES attendues: 3 (alternances cybersécurité)');\nconsole.log('❌ Offres INVALIDES attendues: 3 (stages ou hors cybersécurité)');\n\n// Log détaillé pour débogage\noffresTest.forEach((offre, index) => {\n  const shouldBeValid = offre.id.includes('valide');\n  console.log(`${index + 1}. ${offre.title} → ${shouldBeValid ? '✅ DOIT ÊTRE VALIDE' : '❌ DOIT ÊTRE INVALIDE'}`);\n});\n\nconsole.log('🚀 Envoi vers Classification Mistral Large...');\n\n// Retourner chaque offre comme un item séparé pour le traitement\nreturn offresTest.map(offre => ({ json: offre }));"
+      },
+      "id": "b9d8e5f2-345f-5678-9012-3456789abcde",
+      "name": "🧪 Générateur Offres Test Réalistes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "runOnceForAllItems": true,
+        "jsCode": "// TRAITEMENT DE TOUS LES ITEMS EN UNE SEULE FOIS\nconsole.log('🔢 === DÉBUT TRAITEMENT GLOBAL ===');\nconst allItems = $input.all();\nconsole.log('📋 Nombre total d\\'items à traiter:', allItems.length);\n\n// Lister tous les items reçus\nallItems.forEach((item, index) => {\n  console.log(`📄 Item ${index + 1}:`, item.json.id, '-', item.json.title);\n});\n\n// CONFIGURATION MISTRAL\nconst config = {\n  apiKey: process.env.MISTRAL_API_KEY || 'fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95',\n  apiUrl: 'https://api.mistral.ai/v1/chat/completions',\n  model: 'mistral-large-latest',\n  temperature: 0.05,\n  max_tokens: 300\n};\n\n// Fonction pour classer une offre individuelle\nasync function classifyOffer(offre, index) {\n  console.log(`\\n🤖 === CLASSIFICATION ${index + 1}/${allItems.length}: ${offre.title} ===`);\n  console.log('🏢 Entreprise:', offre.company);\n  console.log('🔑 ID offre:', offre.id);\n  console.log('📝 Type contrat:', offre.contract_type);\n\n  const prompt = `Tu es un expert RH spécialisé en cybersécurité et contrats d'alternance.\n\n🎯 **MISSION**: Analyser si cette offre correspond EXACTEMENT à une ALTERNANCE en CYBERSÉCURITÉ.\n\n📋 **OFFRE À ANALYSER**:\n• **Titre**: ${offre.title}\n• **Entreprise**: ${offre.company}\n• **Description**: ${offre.description || 'Non spécifiée'}\n• **Type de contrat**: ${offre.contract_type || 'Non spécifié'}\n• **Mots-clés**: ${offre.keywords ? offre.keywords.join(', ') : 'Aucun'}\n\n🔍 **CRITÈRES OBLIGATOIRES**:\n\n**1. TYPE DE CONTRAT (CRITIQUE)**:\n✅ ALTERNANCE: \"alternance\", \"apprentissage\", \"contrat pro\", \"contrat de professionnalisation\"\n❌ AUTRES: \"stage\", \"CDI\", \"CDD\", \"freelance\", \"mission\"\n\n**2. DOMAINE CYBERSÉCURITÉ (CRITIQUE)**:\n✅ CYBER: \"cybersécurité\", \"sécurité informatique\", \"sécurité des SI\"\n✅ SPÉCIALITÉS: \"SOC\", \"SIEM\", \"pentest\", \"audit sécurité\", \"GRC\", \"forensic\"\n❌ AUTRES: \"sécurité physique\", \"sécurité bâtiment\", \"surveillance\", \"marketing\"\n\n**3. NIVEAU FORMATION (IMPORTANT)**:\n✅ JUNIOR: \"junior\", \"débutant\", \"étudiant\", \"formation\", \"apprenti\"\n❌ SENIOR: \"5+ ans\", \"expert\", \"senior\", \"confirmé\"\n\n📝 **FORMAT DE RÉPONSE OBLIGATOIRE**:\n**CLASSIFICATION**: VALIDE ou INVALIDE\n**JUSTIFICATION**: [Explique en 1-2 phrases pourquoi]\n\nAnalyse maintenant cette offre.`;\n\n  const payload = {\n    model: config.model,\n    messages: [\n      {\n        role: \"system\",\n        content: \"Tu es un expert RH avec 15 ans d'expérience en cybersécurité et alternance. Tu analyses les offres avec précision.\"\n      },\n      {\n        role: \"user\",\n        content: prompt\n      }\n    ],\n    temperature: config.temperature,\n    max_tokens: config.max_tokens\n  };\n\n  try {\n    console.log(`🌐 Appel API Mistral pour item ${index + 1}...`);\n    \n    const response = await fetch(config.apiUrl, {\n      method: 'POST',\n      headers: {\n        'Content-Type': 'application/json',\n        'Authorization': `Bearer ${config.apiKey}`\n      },\n      body: JSON.stringify(payload)\n    });\n\n    if (!response.ok) {\n      const errorText = await response.text();\n      console.log(`❌ Erreur API item ${index + 1}:`, response.status, errorText);\n      return {\n        ...offre,\n        mistral_response: 'ERREUR_API',\n        classification: 'ERREUR',\n        is_valid: false,\n        confidence: 0,\n        error: `HTTP ${response.status}: ${errorText}`,\n        processed_at: new Date().toISOString(),\n        item_index: index\n      };\n    }\n\n    const data = await response.json();\n    \n    if (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {\n      const content = data.choices[0].message.content.trim();\n      console.log(`📝 Réponse Mistral item ${index + 1}:`, content.substring(0, 100) + '...');\n\n      // Classification\n      const contentUpper = content.toUpperCase();\n      let classification, isValid, confidence;\n\n      if (contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE')) {\n        classification = 'VALIDE';\n        isValid = true;\n        confidence = 0.9;\n        console.log(`✅ Item ${index + 1} - VALIDÉ`);\n      } else if (contentUpper.includes('INVALIDE')) {\n        classification = 'INVALIDE';\n        isValid = false;\n        confidence = 0.9;\n        console.log(`❌ Item ${index + 1} - REJETÉ`);\n      } else {\n        classification = 'INCERTAIN';\n        isValid = false;\n        confidence = 0.3;\n        console.log(`⚠️ Item ${index + 1} - INCERTAIN`);\n      }\n\n      return {\n        ...offre,\n        mistral_response: content,\n        classification: classification,\n        is_valid: isValid,\n        confidence: confidence,\n        model_used: data.model || config.model,\n        usage: data.usage || {},\n        processed_at: new Date().toISOString(),\n        item_index: index,\n        total_items: allItems.length\n      };\n    } else {\n      console.log(`❌ Structure réponse invalide item ${index + 1}`);\n      return {\n        ...offre,\n        mistral_response: 'STRUCTURE_INVALIDE',\n        classification: 'ERREUR',\n        is_valid: false,\n        confidence: 0,\n        error: 'Structure réponse Mistral invalide',\n        processed_at: new Date().toISOString(),\n        item_index: index\n      };\n    }\n\n  } catch (error) {\n    console.log(`🚨 Erreur item ${index + 1}:`, error.message);\n    return {\n      ...offre,\n      mistral_response: 'ERREUR_RESEAU',\n      classification: 'ERREUR',\n      is_valid: false,\n      confidence: 0,\n      error: `${error.constructor.name}: ${error.message}`,\n      processed_at: new Date().toISOString(),\n      item_index: index\n    };\n  }\n}\n\n// TRAITEMENT SÉQUENTIEL DE TOUTES LES OFFRES\nconsole.log('🚀 Début du traitement séquentiel...');\nconst results = [];\n\nfor (let i = 0; i < allItems.length; i++) {\n  const offre = allItems[i].json;\n  const result = await classifyOffer(offre, i);\n  results.push({ json: result });\n  \n  // Petite pause pour éviter les limites de rate\n  if (i < allItems.length - 1) {\n    await new Promise(resolve => setTimeout(resolve, 500));\n  }\n}\n\nconsole.log('\\n📊 === RÉSUMÉ FINAL ===');\nconst validCount = results.filter(r => r.json.classification === 'VALIDE').length;\nconst invalidCount = results.filter(r => r.json.classification === 'INVALIDE').length;\nconst errorCount = results.filter(r => r.json.classification === 'ERREUR').length;\n\nconsole.log(`✅ Offres VALIDES: ${validCount}`);\nconsole.log(`❌ Offres INVALIDES: ${invalidCount}`);\nconsole.log(`🚨 Erreurs: ${errorCount}`);\nconsole.log('🏁 Traitement terminé !\\n');\n\n// Retourner tous les résultats\nreturn results;"
+      },
+      "id": "c0e9f6g3-456g-6789-0123-456789abcdef",
+      "name": "Classification Mistral - TOUS ITEMS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "12345678-abcd-1234-abcd-123456789abc",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "VALIDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d1f0a7h4-567h-7890-1234-56789abcdef0",
+      "name": "Offre Valide ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "33333333-4444-5555-6666-777777777777",
+              "name": "action",
+              "value": "OFFRE_ACCEPTEE",
+              "type": "string"
+            },
+            {
+              "id": "99999999-aaaa-bbbb-cccc-dddddddddddd",
+              "name": "message",
+              "value": "✅ Offre validée pour alternance cybersécurité",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e2g1b8i5-678i-8901-2345-6789abcdef01",
+      "name": "Traitement Valide",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "55555555-6666-7777-8888-999999999999",
+              "name": "action",
+              "value": "OFFRE_REJETEE",
+              "type": "string"
+            },
+            {
+              "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+              "name": "message",
+              "value": "❌ Offre ne correspond pas aux critères",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f3h2c9j6-789j-9012-3456-789abcdef012",
+      "name": "Traitement Invalide",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 400]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🧪 Générateur Offres Test Réalistes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧪 Générateur Offres Test Réalistes": {
+      "main": [
+        [
+          {
+            "node": "Classification Mistral - TOUS ITEMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification Mistral - TOUS ITEMS": {
+      "main": [
+        [
+          {
+            "node": "Offre Valide ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offre Valide ?": {
+      "main": [
+        [
+          {
+            "node": "Traitement Valide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Traitement Invalide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "12345678-1234-1234-1234-123456789abc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "12345678-1234-1234-1234-123456789abc"
+  },
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "tags": []
+}

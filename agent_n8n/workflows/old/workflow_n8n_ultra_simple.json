@@ -1,0 +1,195 @@
+{
+  "name": "Agent Alternance - Ultra Simple",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "*/5 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Déclencheur Test (5min)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Générateur de données simple\nconst offers = [\n  {\n    title: \"Alternance Cybersécurité - Analyste SOC\",\n    company: \"SecureTech Solutions\",\n    description: \"Poste d'alternant en cybersécurité. Missions: monitoring, analyse incidents.\",\n    type: \"alternance_reelle\"\n  },\n  {\n    title: \"Formation Cybersécurité - École\",\n    company: \"École Info\",\n    description: \"Formation diplômante en cybersécurité. Programme de 3 ans.\",\n    type: \"formation_ecole\"\n  }\n];\n\nconsole.log(`📋 Génération de ${offers.length} offres`);\nreturn offers.map(offer => ({ json: offer }));"
+      },
+      "id": "data-generator",
+      "name": "Générateur Données",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 240]
+    },
+    {
+      "parameters": {
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $credentials.mistralCloudApi.apiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-large-latest\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyse cette offre. Réponds UNIQUEMENT 'VALIDE' ou 'INVALIDE'. Titre: {{ $json.title }} - Description: {{ $json.description }}\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 10\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "mistral-simple",
+      "name": "Classification Simple",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 240],
+      "credentials": {
+        "mistralCloudApi": {
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Traitement sécurisé de la réponse Mistral\nconst originalData = $input.first()?.json || {};\nconst mistralResponse = $json;\n\nconsole.log('🔍 Données reçues:');\nconsole.log('Original:', JSON.stringify(originalData, null, 2));\nconsole.log('Mistral Response:', JSON.stringify(mistralResponse, null, 2));\n\n// Extraction sécurisée de la réponse IA\nlet aiResponse = 'ERREUR';\ntry {\n  if (mistralResponse && mistralResponse.choices && mistralResponse.choices[0]) {\n    aiResponse = mistralResponse.choices[0].message?.content || 'ERREUR';\n  }\n} catch (error) {\n  console.error('Erreur extraction réponse:', error);\n  aiResponse = 'ERREUR';\n}\n\n// Nettoyage de la réponse\naiResponse = aiResponse.trim().toUpperCase();\n\n// Classification sécurisée\nlet isValid = false;\nlet status = 'ERREUR';\n\nif (aiResponse.includes('VALIDE')) {\n  isValid = true;\n  status = '✅ VALIDÉE';\n} else if (aiResponse.includes('INVALIDE')) {\n  isValid = false;\n  status = '❌ REJETÉE';\n} else {\n  // Fallback basé sur les mots-clés\n  const title = originalData.title || '';\n  if (title.toLowerCase().includes('alternance') || title.toLowerCase().includes('apprentissage')) {\n    isValid = true;\n    status = '✅ VALIDÉE (fallback)';\n  } else {\n    isValid = false;\n    status = '❌ REJETÉE (fallback)';\n  }\n}\n\nconst result = {\n  ...originalData,\n  ai_response: aiResponse,\n  is_valid: isValid,\n  status: status,\n  processed_at: new Date().toISOString()\n};\n\nconsole.log('🎯 Résultat final:', JSON.stringify(result, null, 2));\n\nreturn { json: result };"
+      },
+      "id": "process-response",
+      "name": "Traitement Sécurisé",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "filter-safe",
+      "name": "Filtrage Sécurisé",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Rapport final des offres validées\nconst validOffer = $json;\n\nconst report = {\n  titre: validOffer.title,\n  entreprise: validOffer.company,\n  status: validOffer.status,\n  ai_response: validOffer.ai_response,\n  date_validation: validOffer.processed_at\n};\n\nconsole.log('✅ Offre validée:', JSON.stringify(report, null, 2));\n\nreturn { json: report };"
+      },
+      "id": "format-valid",
+      "name": "Offres Validées",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log des offres rejetées\nconst rejectedOffer = $json;\n\nconst report = {\n  titre: rejectedOffer.title,\n  entreprise: rejectedOffer.company,\n  status: rejectedOffer.status,\n  raison: rejectedOffer.ai_response,\n  date_rejet: rejectedOffer.processed_at\n};\n\nconsole.log('❌ Offre rejetée:', JSON.stringify(report, null, 2));\n\nreturn { json: report };"
+      },
+      "id": "format-rejected",
+      "name": "Offres Rejetées",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 320]
+    }
+  ],
+  "connections": {
+    "Déclencheur Test (5min)": {
+      "main": [
+        [
+          {
+            "node": "Générateur Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générateur Données": {
+      "main": [
+        [
+          {
+            "node": "Classification Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification Simple": {
+      "main": [
+        [
+          {
+            "node": "Traitement Sécurisé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traitement Sécurisé": {
+      "main": [
+        [
+          {
+            "node": "Filtrage Sécurisé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrage Sécurisé": {
+      "main": [
+        [
+          {
+            "node": "Offres Validées",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Offres Rejetées",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "simple-test",
+      "name": "Test Simple"
+    }
+  ],
+  "triggerCount": 1
+}
+

@@ -1,0 +1,206 @@
+{
+  "name": "TEST - Nouvelle Clé Mistral (Variables ENV)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-test-new-key",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TEST NOUVELLE CLÉ MISTRAL DEPUIS ENV\nconsole.log('🔑 === TEST NOUVELLE CLÉ MISTRAL ===');\n\n// Récupération clé depuis variables d'environnement\nconst mistralKey = $env.mistral_key_site_emploi;\n\nif (!mistralKey) {\n  console.log('❌ ERREUR: Variable mistral_key_site_emploi non trouvée');\n  console.log('🔧 Vérifiez que la clé est bien dans le fichier .env');\n  return [{\n    json: {\n      error: 'MISSING_ENV_VAR',\n      message: 'Variable mistral_key_site_emploi introuvable',\n      recommendation: 'Vérifier fichier .env et redémarrer N8N'\n    }\n  }];\n}\n\nconsole.log('✅ Clé Mistral trouvée:', mistralKey.substring(0, 8) + '...');\nconsole.log('📏 Longueur clé:', mistralKey.length, 'caractères');\n\n// Tests avec différents niveaux de complexité\nconst testsOffres = [\n  {\n    id: 'test-simple-1',\n    title: 'Contrat d\\'apprentissage - Analyste Cybersécurité SOC',\n    company: 'Orange Cyberdefense',\n    description: 'Formation alternance 24 mois analyste cybersécurité SOC.',\n    contract_type: 'Contrat d\\'apprentissage',\n    attendu: 'VALIDE',\n    complexite: 'SIMPLE'\n  },\n  {\n    id: 'test-complexe-1',\n    title: 'Apprentissage - Commercial Solutions Cyber B2B',\n    company: 'CyberVente Corp',\n    description: 'Contrat apprentissage commercial spécialisé vente solutions cybersécurité entreprises.',\n    contract_type: 'Contrat d\\'apprentissage',\n    attendu: 'INVALIDE',\n    complexite: 'COMPLEXE'\n  },\n  {\n    id: 'test-limite-1',\n    title: 'Stage - Pentester Junior',\n    company: 'SecuriTest',\n    description: 'Stage 6 mois pentesting et audit sécurité systèmes informatiques.',\n    contract_type: 'Stage',\n    attendu: 'INVALIDE',\n    complexite: 'LIMITE'\n  }\n];\n\nconsole.log('📋 Tests préparés:', testsOffres.length);\n\nreturn testsOffres.map(test => {\n  const prompt = `ANALYSE OFFRE ALTERNANCE CYBERSÉCURITÉ:\n\nTITRE: ${test.title}\nENTREPRISE: ${test.company}\nCONTRAT: ${test.contract_type}\nDESCRIPTION: ${test.description}\n\nCRITÈRES VALIDATION:\n✅ CONTRAT = apprentissage OU alternance OU contrat pro\n✅ DOMAINE = cybersécurité OU sécurité informatique\n❌ EXCLURE = stage, CDI, CDD, commercial, marketing\n\nRÉPONDS EXACTEMENT:\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [raison courte]`;\n\n  const payload = {\n    model: \"mistral-large-latest\",\n    messages: [\n      {\n        role: \"system\",\n        content: \"Tu es un expert en classification d'offres d'alternance cybersécurité. Tu appliques des critères stricts et réponds avec le format exact demandé.\"\n      },\n      {\n        role: \"user\",\n        content: prompt\n      }\n    ],\n    temperature: 0.05,\n    max_tokens: 150\n  };\n\n  return {\n    json: {\n      ...test,\n      mistral_key: mistralKey,\n      payload_string: JSON.stringify(payload),\n      prompt_used: prompt,\n      api_url: 'https://api.mistral.ai/v1/chat/completions',\n      test_timestamp: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "id": "prepare-tests-new-key",
+      "name": "🔑 Préparer Tests Nouvelle Clé",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.api_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.mistral_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-emploi-cybersecurite/1.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.payload_string }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-mistral-new-key",
+      "name": "🌐 Appel Mistral Nouvelle Clé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT SUCCÈS MISTRAL\nconst testData = $('🔑 Préparer Tests Nouvelle Clé').item.json;\nconst apiResponse = $input.item.json;\n\nconsole.log(`✅ === SUCCÈS MISTRAL: ${testData.title} ===`);\nconsole.log('🎯 Complexité test:', testData.complexite);\nconsole.log('🎯 Résultat attendu:', testData.attendu);\n\nlet classification = 'ERREUR';\nlet justification = 'Réponse API invalide';\nlet confidence = 0;\n\nif (apiResponse && apiResponse.choices && apiResponse.choices[0] && apiResponse.choices[0].message) {\n  const content = apiResponse.choices[0].message.content.trim();\n  console.log('📝 Réponse Mistral:', content);\n\n  // EXTRACTION CLASSIFICATION\n  const validMatch = content.match(/CLASSIFICATION:\\s*(VALIDE)/i);\n  const invalidMatch = content.match(/CLASSIFICATION:\\s*(INVALIDE)/i);\n  \n  if (validMatch && !invalidMatch) {\n    classification = 'VALIDE';\n    confidence = 0.95;\n  } else if (invalidMatch) {\n    classification = 'INVALIDE';\n    confidence = 0.95;\n  } else {\n    classification = 'INCERTAIN';\n    confidence = 0.3;\n  }\n\n  // EXTRACTION JUSTIFICATION\n  const justifMatch = content.match(/JUSTIFICATION:\\s*(.+)/i);\n  if (justifMatch) {\n    justification = justifMatch[1].trim();\n  } else {\n    justification = 'Justification non extraite';\n  }\n} else {\n  console.log('❌ Structure réponse API invalide');\n}\n\nconst isCorrect = classification === testData.attendu;\nconst resultIcon = isCorrect ? '✅' : '❌';\n\nconsole.log(`${resultIcon} Classification: ${classification}`);\nconsole.log(`🎯 Attendu: ${testData.attendu}, Obtenu: ${classification}`);\nconsole.log(`💡 Justification: ${justification}`);\n\nreturn {\n  json: {\n    ...testData,\n    mistral_result: {\n      classification: classification,\n      justification: justification,\n      confidence: confidence,\n      is_correct: isCorrect,\n      api_response_valid: true,\n      raw_content: apiResponse.choices[0].message.content,\n      model_used: apiResponse.model,\n      tokens_used: apiResponse.usage\n    },\n    test_status: 'SUCCESS',\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-mistral-success",
+      "name": "✅ Traiter Succès Mistral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT ERREUR MISTRAL\nconst testData = $('🔑 Préparer Tests Nouvelle Clé').item.json;\nconst errorData = $input.item;\n\nconsole.log(`❌ === ERREUR MISTRAL: ${testData.title} ===`);\nconsole.log('🔍 Code erreur:', errorData.httpCode);\nconsole.log('📋 Message:', errorData.message);\n\nlet diagnostic = 'Erreur inconnue';\nlet solution = 'Investiguer manuellement';\nlet severite = 'MEDIUM';\n\nswitch(errorData.httpCode) {\n  case 401:\n    diagnostic = 'Clé API invalide ou expirée';\n    solution = 'Vérifier la clé dans les variables d\\'environnement';\n    severite = 'HIGH';\n    break;\n  case 422:\n    diagnostic = 'Payload invalide';\n    solution = 'Vérifier structure JSON des messages';\n    severite = 'MEDIUM';\n    break;\n  case 404:\n    diagnostic = 'Endpoint API incorrect';\n    solution = 'Vérifier URL API Mistral';\n    severite = 'HIGH';\n    break;\n  case 429:\n    diagnostic = 'Limite de taux dépassée';\n    solution = 'Attendre et réessayer, ou upgrader plan';\n    severite = 'LOW';\n    break;\n  case 500:\n    diagnostic = 'Erreur serveur Mistral';\n    solution = 'Réessayer plus tard';\n    severite = 'MEDIUM';\n    break;\n}\n\nconsole.log('🏷️ Diagnostic:', diagnostic);\nconsole.log('💡 Solution:', solution);\nconsole.log('⚠️ Sévérité:', severite);\n\nreturn {\n  json: {\n    ...testData,\n    mistral_result: {\n      classification: 'ERREUR_API',\n      justification: diagnostic,\n      confidence: 0,\n      is_correct: false,\n      api_response_valid: false,\n      error_details: {\n        code: errorData.httpCode,\n        message: errorData.message,\n        diagnostic: diagnostic,\n        solution: solution,\n        severite: severite\n      }\n    },\n    test_status: 'ERROR',\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-mistral-error",
+      "name": "❌ Traiter Erreur Mistral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "summary-result",
+              "name": "summary",
+              "value": "🧪 TEST MISTRAL: {{ $json.mistral_result.classification }} ({{ $json.test_status }})",
+              "type": "string"
+            },
+            {
+              "id": "accuracy-result",
+              "name": "accuracy",
+              "value": "Attendu: {{ $json.attendu }}, Obtenu: {{ $json.mistral_result.classification }}, Correct: {{ $json.mistral_result.is_correct }}",
+              "type": "string"
+            },
+            {
+              "id": "confidence-result",
+              "name": "confidence",
+              "value": "={{ $json.mistral_result.confidence }}",
+              "type": "number"
+            },
+            {
+              "id": "justification-result",
+              "name": "justification",
+              "value": "{{ $json.mistral_result.justification }}",
+              "type": "string"
+            },
+            {
+              "id": "complexity-result",
+              "name": "test_complexity",
+              "value": "{{ $json.complexite }}",
+              "type": "string"
+            },
+            {
+              "id": "status-result",
+              "name": "api_status",
+              "value": "{{ $json.test_status }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-results",
+      "name": "📊 Formater Résultats",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "🔑 Préparer Tests Nouvelle Clé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔑 Préparer Tests Nouvelle Clé": {
+      "main": [
+        [
+          {
+            "node": "🌐 Appel Mistral Nouvelle Clé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Appel Mistral Nouvelle Clé": {
+      "main": [
+        [
+          {
+            "node": "✅ Traiter Succès Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "❌ Traiter Erreur Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Traiter Succès Mistral": {
+      "main": [
+        [
+          {
+            "node": "📊 Formater Résultats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Traiter Erreur Mistral": {
+      "main": [
+        [
+          {
+            "node": "📊 Formater Résultats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "test-new-key-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "workflow-test-nouvelle-cle-mistral",
+  "tags": ["test", "mistral", "nouvelle-cle", "env-vars"]
+}

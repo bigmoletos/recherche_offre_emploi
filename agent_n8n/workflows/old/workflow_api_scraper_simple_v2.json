@@ -1,0 +1,277 @@
+{
+  "name": "Agent Alternance API - Workflow Simple v2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Déclencheur Quotidien",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:9555/health",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-api-health",
+      "name": "Test API Santé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9555/scrape-offres",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"termes\": [\"alternance cybersécurité\", \"alternance sécurité informatique\"],\n  \"max_offres\": 10,\n  \"sources\": [\"pole_emploi\", \"apec\"]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "collecte-offres-api",
+      "name": "Collecte Offres API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results.offres",
+        "options": {}
+      },
+      "id": "separer-offres",
+      "name": "Séparer Offres",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralApi",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"model\": \"mistral-large-latest\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Tu es un expert en filtrage d'offres d'alternance. Analyse l'offre et réponds UNIQUEMENT par :\\n- 'VALIDE' si c'est une vraie offre d'alternance en cybersécurité/informatique\\n- 'INVALIDE: raison' si ce n'est pas adapté\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyse cette offre:\\n\\nTitre: {{ $json.title }}\\nEntreprise: {{ $json.company }}\\nLieu: {{ $json.location }}\\nDescription: {{ $json.description }}\\nSource: {{ $json.scraper_source }}\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 100\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "classification-mistral",
+      "name": "Classification IA Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "ai_response",
+              "value": "={{ $json.choices[0].message.content }}"
+            },
+            {
+              "name": "is_valid",
+              "value": "={{ $json.choices[0].message.content.startsWith('VALIDE') }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $('Séparer Offres').item.json.title }}"
+            },
+            {
+              "name": "company",
+              "value": "={{ $('Séparer Offres').item.json.company }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $('Séparer Offres').item.json.location }}"
+            },
+            {
+              "name": "url",
+              "value": "={{ $('Séparer Offres').item.json.url }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $('Séparer Offres').item.json.description }}"
+            },
+            {
+              "name": "scraper_source",
+              "value": "={{ $('Séparer Offres').item.json.scraper_source }}"
+            }
+          ]
+        }
+      },
+      "id": "enrichissement-donnees",
+      "name": "Enrichissement Données",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.is_valid }}",
+              "operation": "equal",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "id": "filtrage-offres-valides",
+      "name": "Filtrage Offres Valides",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Traitement des offres filtrées\nconst allItems = $input.all();\n\n// Séparer les offres valides et invalides\nconst validOffers = allItems.filter(item => item.json.is_valid === true);\nconst invalidOffers = allItems.filter(item => item.json.is_valid !== true);\n\nconsole.log(`✅ Offres valides: ${validOffers.length}`);\nconsole.log(`❌ Offres invalides: ${invalidOffers.length}`);\n\n// Génération du rapport final\nconst stats = {\n  total_offres_analysees: allItems.length,\n  offres_validees: validOffers.length,\n  offres_rejetees: invalidOffers.length,\n  timestamp: new Date().toISOString(),\n  sources: [...new Set(allItems.map(o => o.json.scraper_source))],\n  locations: [...new Set(validOffers.map(o => o.json.location))].slice(0, 5)\n};\n\nconsole.log('📊 Rapport généré:', JSON.stringify(stats, null, 2));\n\nreturn [{ \n  json: {\n    rapport: stats,\n    offres_validees: validOffers.map(o => o.json),\n    offres_rejetees: invalidOffers.map(o => ({...o.json, raison_rejet: o.json.ai_response}))\n  }\n}];"
+      },
+      "id": "formatage-rapport-final",
+      "name": "Formatage Rapport Final",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "Déclencheur Quotidien": {
+      "main": [
+        [
+          {
+            "node": "Test API Santé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Santé": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres API": {
+      "main": [
+        [
+          {
+            "node": "Séparer Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer Offres": {
+      "main": [
+        [
+          {
+            "node": "Classification IA Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification IA Mistral": {
+      "main": [
+        [
+          {
+            "node": "Enrichissement Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichissement Données": {
+      "main": [
+        [
+          {
+            "node": "Filtrage Offres Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrage Offres Valides": {
+      "main": [
+        [
+          {
+            "node": "Formatage Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formatage Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "alternance-api-v2",
+      "name": "Alternance API v2"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T10:30:00.000Z",
+  "versionId": "1.2.0"
+}

@@ -152,6 +152,6 @@ agent_python/venv/
 *.pdf
 *.doc
 *.docx
-*.json
+# *.json
 !services/cv-extraction-service/src/models/schemas.json
 !services/excel-generator-service/src/models/schemas.json

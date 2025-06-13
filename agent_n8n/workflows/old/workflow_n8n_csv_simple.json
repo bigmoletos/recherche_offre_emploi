@@ -1,0 +1,127 @@
+{
+  "name": "Agent Alternance - CSV Téléchargeable",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "*/30 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-csv",
+      "name": "Déclencheur (30min)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Générateur de données pour CSV\nconst offers = [\n  {\n    title: \"Alternance Cybersécurité - Analyste SOC H/F\",\n    company: \"SecureTech Solutions\",\n    location: \"Paris (75)\",\n    duration: \"24 mois\",\n    start_date: \"septembre 2025\",\n    description: \"Recherchons alternant pour poste d'analyste SOC. Formation cybersécurité Master 1/2. Missions: monitoring sécurité, analyse incidents, reporting.\",\n    url: \"https://pole-emploi.fr/candidat/offres/recherche/detail/123456\",\n    scraper_source: \"pole_emploi\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Formation Cybersécurité - École Supérieure\",\n    company: \"École Supérieure Informatique\",\n    location: \"Lyon (69)\",\n    duration: \"3 ans\",\n    start_date: \"septembre 2025\",\n    description: \"Formation diplômante en cybersécurité. Programme complet théorique avec stages en entreprise.\",\n    url: \"https://indeed.fr/formation/cybersecurite-123\",\n    scraper_source: \"indeed\",\n    ai_response: \"INVALIDE: Formation d'école\",\n    is_valid: false,\n    status: \"❌ REJETÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance DevSecOps - Infrastructure Sécurisée\",\n    company: \"TechCorp Enterprise\",\n    location: \"Marseille (13)\",\n    duration: \"18 mois\",\n    start_date: \"septembre 2025\",\n    description: \"Poste d'alternant DevSecOps. Mission: automatisation sécurité, CI/CD sécurisé, audit infrastructure.\",\n    url: \"https://apec.fr/candidat/recherche-emploi/detail/123789\",\n    scraper_source: \"apec\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance Pentester Junior - Audit Sécurité\",\n    company: \"CyberSec Consulting\",\n    location: \"Toulouse (31)\",\n    duration: \"24 mois\",\n    start_date: \"octobre 2025\",\n    description: \"Alternance pentesting et audit sécurité. Formation sur tests d'intrusion, analyse vulnérabilités.\",\n    url: \"https://linkedin.com/jobs/view/987654321\",\n    scraper_source: \"linkedin\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  },\n  {\n    title: \"Alternance RSSI Junior - Gouvernance Sécurité\",\n    company: \"Digital Security Corp\",\n    location: \"Nantes (44)\",\n    duration: \"24 mois\",\n    start_date: \"janvier 2026\",\n    description: \"Alternance en gouvernance sécurité. Missions: politique sécurité, conformité RGPD, formation utilisateurs.\",\n    url: \"https://monster.fr/emploi/alternance-rssi-123456\",\n    scraper_source: \"monster\",\n    ai_response: \"VALIDE\",\n    is_valid: true,\n    status: \"✅ VALIDÉE\",\n    processed_at: new Date().toISOString()\n  }\n];\n\nconsole.log(`📋 Génération de ${offers.length} offres pour CSV`);\nreturn offers.map(offer => ({ json: offer }));"
+      },
+      "id": "data-csv",
+      "name": "Données CSV",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "filter-csv",
+      "name": "Filtrer Validées",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Génération CSV manuel - Plus fiable que spreadsheetFile\nconst items = $input.all();\n\nconst csvHeader = 'N°,Titre,Entreprise,Localisation,Durée,Date de début,Site source,Lien direct,Validation IA,Statut,Date traitement,Description\\n';\n\nlet csvContent = csvHeader;\n\nitems.forEach((item, index) => {\n  const offer = item.json;\n  const csvRow = [\n    index + 1,\n    `\"${(offer.title || 'N/A').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.company || 'N/A').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.location || 'N/A').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.duration || 'N/A').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.start_date || 'N/A').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.scraper_source || 'N/A').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.url || 'N/A').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.ai_response || 'VALIDE').replace(/\"/g, '\"\"')}\"`,\n    `\"${(offer.status || '✅ VALIDÉE').replace(/\"/g, '\"\"')}\"`,\n    `\"${new Date(offer.processed_at).toLocaleDateString('fr-FR')}\"`,\n    `\"${((offer.description || '').substring(0, 200) + '...').replace(/\"/g, '\"\"')}\"`\n  ].join(',');\n  \n  csvContent += csvRow + '\\n';\n});\n\nconst filename = `alternance_cybersecurite_${new Date().toISOString().slice(0,19).replace(/[:-]/g, '')}.csv`;\n\nconsole.log(`\\n🎯 ====== FICHIER CSV GÉNÉRÉ ====== 🎯`);\nconsole.log(`📄 Fichier: ${filename}`);\nconsole.log(`✅ Total offres: ${items.length}`);\nconsole.log(`📊 Taille CSV: ${csvContent.length} caractères`);\nconsole.log(``);\nconsole.log(`💾 CONTENU CSV GÉNÉRÉ:`);\nconsole.log(csvContent.substring(0, 500) + '...');\nconsole.log(``);\nconsole.log(`🎯 ======================================= 🎯`);\n\n// Retourner le CSV comme fichier binaire\nconst csvBuffer = Buffer.from(csvContent, 'utf8');\n\nreturn {\n  json: {\n    filename: filename,\n    size: csvContent.length,\n    rows: items.length + 1, // +1 pour le header\n    status: 'CSV prêt'\n  },\n  binary: {\n    data: csvBuffer,\n    mimeType: 'text/csv',\n    fileName: filename\n  }\n};"
+      },
+      "id": "generate-csv",
+      "name": "Générer CSV",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Instructions finales pour CSV\nconst data = $json;\nconst binary = $binary;\n\nconsole.log(`\\n✅ ====== FICHIER CSV PRÊT ====== ✅`);\nconsole.log(`📄 Nom: ${data.filename}`);\nconsole.log(`📊 Taille: ${data.size} caractères`);\nconsole.log(`📋 Lignes: ${data.rows} (header + données)`);\nconsole.log(``);\nconsole.log(`💾 TÉLÉCHARGEMENT:`);\nconsole.log(`1. 👆 Cliquez sur ce nœud 'CSV Téléchargeable'`);\nconsole.log(`2. 📋 Onglet 'OUTPUT' à droite`);\nconsole.log(`3. 📥 Section 'Binary Data'`);\nconsole.log(`4. 🎯 'Download binary file'`);\nconsole.log(``);\nconsole.log(`📊 ALTERNATIVE - Ouvrir avec Excel:`);\nconsole.log(`- Le fichier CSV s'ouvre dans Excel`);\nconsole.log(`- Données formatées automatiquement`);\nconsole.log(`- Colonnes séparées correctement`);\nconsole.log(``);\nconsole.log(`✅ ====== SUCCÈS CSV ====== ✅`);\n\nreturn {\n  json: data,\n  binary: binary\n};"
+      },
+      "id": "csv-ready",
+      "name": "CSV Téléchargeable",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 180]
+    }
+  ],
+  "connections": {
+    "Déclencheur (30min)": {
+      "main": [
+        [
+          {
+            "node": "Données CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Données CSV": {
+      "main": [
+        [
+          {
+            "node": "Filtrer Validées",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrer Validées": {
+      "main": [
+        [
+          {
+            "node": "Générer CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer CSV": {
+      "main": [
+        [
+          {
+            "node": "CSV Téléchargeable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "csv-export",
+      "name": "CSV Export"
+    }
+  ],
+  "triggerCount": 1
+}

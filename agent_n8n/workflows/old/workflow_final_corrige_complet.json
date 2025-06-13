@@ -1,0 +1,247 @@
+{
+  "name": "Agent Alternance API - Workflow Corrigé Final",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:9555/health",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-api-health",
+      "name": "Test API Santé",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9555/scrape-offres",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\n  \"termes\": [\"alternance cybersécurité\", \"alternance sécurité informatique\"],\n  \"max_offres\": 10,\n  \"sources\": [\"pole_emploi\", \"apec\"]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "collecte-offres-api",
+      "name": "Collecte Offres API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Debug complet des données reçues\nconsole.log('🔍 === DEBUG STRUCTURE API ===');\nconsole.log('Type reçu:', typeof $json);\nconsole.log('Keys principales:', Object.keys($json || {}));\nconsole.log('Success:', $json.success);\nconsole.log('Results présent:', !!$json.results);\nconsole.log('Offres présentes:', !!$json.results?.offres);\nconsole.log('Nombre offres:', $json.results?.offres?.length || 0);\n\nif ($json.results?.offres?.length > 0) {\n  console.log('✅ Offres trouvées, aperçu:');\n  $json.results.offres.forEach((offre, i) => {\n    console.log(`  ${i+1}. \"${offre.title}\" par ${offre.company} à ${offre.location}`);\n  });\n} else {\n  console.log('❌ Aucune offre trouvée!');\n}\n\nreturn { json: $json };"
+      },
+      "id": "debug-structure",
+      "name": "Debug Structure",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results.offres",
+        "options": {}
+      },
+      "id": "separer-offres",
+      "name": "Séparer Offres",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Préparation optimisée des données pour Mistral\nconst offre = $json;\nconsole.log('🎯 === PREPARATION MISTRAL ===');\nconsole.log('Offre reçue type:', typeof offre);\nconsole.log('Offre keys:', Object.keys(offre || {}));\nconsole.log('Titre brut:', offre.title);\nconsole.log('Entreprise brute:', offre.company);\nconsole.log('Lieu brut:', offre.location);\n\n// Extraction et nettoyage robuste\nconst title = String(offre.title || 'Titre non spécifié')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 150);\n\nconst company = String(offre.company || 'Entreprise non spécifiée')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80);\n\nconst location = String(offre.location || 'Lieu non spécifié')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 60);\n\nconst description = String(offre.description || '')\n  .replace(/[\"'\\n\\r\\t]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 200);\n\nconsole.log('📝 Données nettoyées:');\nconsole.log('  Titre:', title);\nconsole.log('  Entreprise:', company);\nconsole.log('  Lieu:', location);\n\n// Construction du prompt pour Mistral\nconst prompt = `Analyse cette offre d'emploi :\n\nTitre: ${title}\nEntreprise: ${company}\nLocalisation: ${location}\nDescription: ${description}\n\nCette offre correspond-elle à une alternance en cybersécurité ou sécurité informatique ?\n\nRéponds uniquement par: VALIDE ou INVALIDE`;\n\nconsole.log('🤖 Prompt final:', prompt.substring(0, 200) + '...');\n\n// Construction de la requête Mistral\nconst mistralRequest = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: prompt\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 10\n};\n\nconsole.log('📨 Requête Mistral prête');\n\nreturn {\n  json: {\n    mistral_request: mistralRequest,\n    original_offre: offre,\n    cleaned_data: {\n      title: title,\n      company: company,\n      location: location,\n      description: description\n    },\n    debug_info: {\n      prompt_length: prompt.length,\n      has_title: !!offre.title,\n      has_company: !!offre.company,\n      has_location: !!offre.location\n    }\n  }\n};"
+      },
+      "id": "preparation-mistral",
+      "name": "Préparation Mistral",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ $json.mistral_request }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "classification-mistral",
+      "name": "Classification IA Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Traitement final avec gestion d'erreurs\nconst mistralResponse = $json;\nconst preparationData = $('Préparation Mistral').item.json;\n\nconsole.log('🎯 === TRAITEMENT RESULTAT ===');\nconsole.log('Mistral response type:', typeof mistralResponse);\nconsole.log('Has choices:', !!mistralResponse.choices);\n\nlet aiResponse = 'ERREUR_ANALYSE';\nlet isValid = false;\n\ntry {\n  if (mistralResponse.choices && mistralResponse.choices[0]) {\n    aiResponse = mistralResponse.choices[0].message.content || 'REPONSE_VIDE';\n    const responseUpper = aiResponse.toUpperCase().trim();\n    \n    // Analyse robuste de la réponse\n    isValid = responseUpper === 'VALIDE' || \n             (responseUpper.includes('VALIDE') && !responseUpper.includes('INVALIDE'));\n    \n    console.log('✅ Réponse Mistral:', aiResponse);\n    console.log('✅ Classification:', isValid ? 'VALIDE' : 'INVALIDE');\n  } else {\n    console.log('❌ Structure réponse Mistral invalide');\n    aiResponse = 'ERREUR_STRUCTURE_REPONSE';\n  }\n} catch (error) {\n  console.log('❌ Erreur traitement:', error.message);\n  aiResponse = 'ERREUR_EXCEPTION';\n}\n\n// Résultat final\nconst result = {\n  // Données de l'offre\n  title: preparationData.cleaned_data.title,\n  company: preparationData.cleaned_data.company,\n  location: preparationData.cleaned_data.location,\n  description: preparationData.cleaned_data.description,\n  url: preparationData.original_offre.url || 'URL_NON_DISPONIBLE',\n  scraper_source: preparationData.original_offre.scraper_source || 'SOURCE_INCONNUE',\n  search_term: preparationData.original_offre.search_term || 'TERME_INCONNU',\n  \n  // Résultats IA\n  ai_response: aiResponse,\n  is_valid: isValid,\n  validation_status: isValid ? 'VALIDE' : 'INVALIDE',\n  \n  // Métadonnées\n  analyzed_at: new Date().toISOString(),\n  mistral_model: 'mistral-small-latest',\n  debug_info: preparationData.debug_info\n};\n\nconsole.log('📊 Résultat final:', {\n  title: result.title.substring(0, 30) + '...',\n  company: result.company,\n  status: result.validation_status\n});\n\nreturn { json: result };"
+      },
+      "id": "formatage-resultat",
+      "name": "Formatage Résultat",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Rapport final avec métriques détaillées\nconst allResults = $input.all();\nconst processEndTime = new Date();\n\nconsole.log('📊 === RAPPORT FINAL ===');\nconsole.log('Total résultats:', allResults.length);\n\n// Classifications\nconst validOffers = allResults.filter(item => item.json.is_valid === true);\nconst invalidOffers = allResults.filter(item => item.json.is_valid === false);\nconst errorOffers = allResults.filter(item => \n  item.json.ai_response.includes('ERREUR') || \n  item.json.ai_response === 'REPONSE_VIDE'\n);\n\n// Statistiques par source\nconst sourceStats = {};\nallResults.forEach(item => {\n  const source = item.json.scraper_source;\n  if (!sourceStats[source]) sourceStats[source] = { total: 0, valid: 0 };\n  sourceStats[source].total++;\n  if (item.json.is_valid) sourceStats[source].valid++;\n});\n\n// Rapport structuré\nconst rapport = {\n  execution_summary: {\n    total_analyzed: allResults.length,\n    valid_offers: validOffers.length,\n    invalid_offers: invalidOffers.length,\n    error_count: errorOffers.length,\n    success_rate: allResults.length > 0 ? Math.round((validOffers.length / allResults.length) * 100) : 0,\n    timestamp: processEndTime.toISOString()\n  },\n  \n  source_breakdown: sourceStats,\n  \n  validated_offers: validOffers.map(item => ({\n    title: item.json.title,\n    company: item.json.company,\n    location: item.json.location,\n    url: item.json.url,\n    source: item.json.scraper_source,\n    ai_confidence: item.json.ai_response\n  })),\n  \n  rejected_offers: invalidOffers.map(item => ({\n    title: item.json.title,\n    company: item.json.company,\n    source: item.json.scraper_source,\n    rejection_reason: item.json.ai_response\n  })),\n  \n  processing_errors: errorOffers.map(item => ({\n    title: item.json.title,\n    source: item.json.scraper_source,\n    error_type: item.json.ai_response\n  })),\n  \n  top_locations: [...new Set(validOffers.map(item => item.json.location))].slice(0, 5)\n};\n\nconsole.log('✅ Offres validées:', rapport.execution_summary.valid_offers);\nconsole.log('❌ Offres rejetées:', rapport.execution_summary.invalid_offers);\nconsole.log('🔥 Taux de succès:', rapport.execution_summary.success_rate + '%');\nconsole.log('🚀 Sources utilisées:', Object.keys(sourceStats));\n\nreturn [{ json: rapport }];"
+      },
+      "id": "rapport-final",
+      "name": "Rapport Final",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Test API Santé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test API Santé": {
+      "main": [
+        [
+          {
+            "node": "Collecte Offres API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collecte Offres API": {
+      "main": [
+        [
+          {
+            "node": "Debug Structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Structure": {
+      "main": [
+        [
+          {
+            "node": "Séparer Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Séparer Offres": {
+      "main": [
+        [
+          {
+            "node": "Préparation Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Mistral": {
+      "main": [
+        [
+          {
+            "node": "Classification IA Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classification IA Mistral": {
+      "main": [
+        [
+          {
+            "node": "Formatage Résultat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatage Résultat": {
+      "main": [
+        [
+          {
+            "node": "Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "workflow-corrige-final",
+      "name": "Workflow Corrigé Final"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T20:30:00.000Z",
+  "versionId": "2.0.0"
+}

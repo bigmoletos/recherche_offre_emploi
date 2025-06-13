@@ -1,0 +1,86 @@
+{
+  "name": "Test Mistral Statique - Debug",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Déclencheur Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "mistral-small-latest"
+            },
+            {
+              "name": "messages",
+              "value": "[{\"role\":\"user\",\"content\":\"Hello, respond with just 'TEST OK'\"}]"
+            },
+            {
+              "name": "max_tokens",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-mistral-statique",
+      "name": "Test Mistral Statique",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    }
+  ],
+  "connections": {
+    "Déclencheur Manuel": {
+      "main": [
+        [
+          {
+            "node": "Test Mistral Statique",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-mistral-statique",
+      "name": "Test Mistral Statique"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T17:10:00.000Z",
+  "versionId": "1.0.0"
+}

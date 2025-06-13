@@ -1,0 +1,92 @@
+{
+  "name": "Workflow Mistral Code Final",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "test-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "Contrat d'apprentissage - Analyste Cybersécurité SOC"
+            },
+            {
+              "name": "company",
+              "value": "Orange Cyberdefense"
+            },
+            {
+              "name": "description",
+              "value": "Formation alternance 24 mois analyste cybersécurité SOC."
+            },
+            {
+              "name": "contract_type",
+              "value": "Contrat d'apprentissage"
+            }
+          ]
+        }
+      },
+      "id": "test-data",
+      "name": "Test Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Classification Mistral via Code Node - Workaround Docker\nconst fetch = require('node-fetch');\n\n// Récupération des variables d'environnement\nconst mistralKey = process.env.mistral_key_site_emploi;\n\nif (!mistralKey) {\n  throw new Error('Variable mistral_key_site_emploi non trouvée');\n}\n\n// Préparation du prompt\nconst offre = $input.all()[0].json;\nconst prompt = `ANALYSE OFFRE ALTERNANCE CYBERSÉCURITÉ:\n\nTITRE: ${offre.title}\nENTREPRISE: ${offre.company}\nCONTRAT: ${offre.contract_type}\nDESCRIPTION: ${offre.description}\n\nCRITÈRES VALIDATION:\n✅ CONTRAT = apprentissage OU alternance OU contrat pro\n✅ DOMAINE = cybersécurité OU sécurité informatique\n❌ EXCLUER = stage, CDI, CDD, commercial, marketing\n\nRÉPONDS EXACTEMENT:\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [raison courte]`;\n\n// Configuration de la requête\nconst requestBody = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: prompt\n    }\n  ],\n  max_tokens: 100\n};\n\nconst requestOptions = {\n  method: 'POST',\n  headers: {\n    'Authorization': `Bearer ${mistralKey}`,\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify(requestBody)\n};\n\ntry {\n  // Appel à l'API Mistral\n  const response = await fetch('https://api.mistral.ai/v1/chat/completions', requestOptions);\n  \n  if (!response.ok) {\n    const errorText = await response.text();\n    throw new Error(`Erreur HTTP ${response.status}: ${errorText}`);\n  }\n  \n  const result = await response.json();\n  \n  // Extraction de la réponse\n  const classification = result.choices[0].message.content;\n  const tokensUsed = result.usage.total_tokens;\n  \n  // Retour du résultat\n  return [{\n    json: {\n      ...offre,\n      classification_result: classification,\n      tokens_used: tokensUsed,\n      model_used: result.model,\n      status: 'SUCCESS_CODE_NODE',\n      timestamp: new Date().toISOString(),\n      api_call: 'MISTRAL_VIA_CODE_NODE'\n    }\n  }];\n  \n} catch (error) {\n  console.error('Erreur classification Mistral:', error);\n  \n  // Fallback sur classification locale en cas d'erreur\n  const motsClesAlternance = ['apprentissage', 'alternance', 'contrat pro', 'professionnalisation'];\n  const motsClescybersecu = ['cybersécurité', 'cybersecurity', 'sécurité informatique', 'SOC', 'analyste sécurité'];\n  const motsExclus = ['stage', 'CDI', 'CDD', 'commercial', 'marketing', 'vente'];\n  \n  const texteComplet = `${offre.title} ${offre.description} ${offre.contract_type}`.toLowerCase();\n  \n  const hasAlternance = motsClesAlternance.some(mot => texteComplet.includes(mot.toLowerCase()));\n  const hasCybersecu = motsClescybersecu.some(mot => texteComplet.includes(mot.toLowerCase()));\n  const hasExclusion = motsExclus.some(mot => texteComplet.includes(mot.toLowerCase()));\n  \n  const classification = (hasAlternance && hasCybersecu && !hasExclusion) ? 'VALIDE' : 'INVALIDE';\n  const confiance = hasAlternance && hasCybersecu ? 85 : 60;\n  \n  return [{\n    json: {\n      ...offre,\n      classification_result: `CLASSIFICATION: ${classification}\\nJUSTIFICATION: Classification locale (API erreur: ${error.message})`,\n      status: 'FALLBACK_CLASSIFICATION_LOCALE',\n      confiance: confiance,\n      timestamp: new Date().toISOString(),\n      erreur_api: error.message\n    }\n  }];\n}"
+      },
+      "id": "mistral-classification-code",
+      "name": "Mistral Classification Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Test Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Data": {
+      "main": [
+        [
+          {
+            "node": "Mistral Classification Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "id": "mistral-code-working",
+      "name": "mistral-code-working"
+    }
+  ]
+}

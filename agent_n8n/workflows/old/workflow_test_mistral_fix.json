@@ -1,0 +1,114 @@
+{
+  "name": "Test Mistral - Syntaxe Corrigée",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Préparation simple d'un test Mistral\nconst testRequest = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: \"Réponds simplement par VALIDE si cette offre est valide: Alternance Cybersécurité chez TechCorp à Paris\"\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 10\n};\n\nconsole.log('🧪 Test Mistral - Requête préparée:');\nconsole.log(JSON.stringify(testRequest, null, 2));\n\nreturn {\n  json: {\n    mistral_test: testRequest\n  }\n};"
+      },
+      "id": "preparation-test",
+      "name": "Préparation Test",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ $json.mistral_test }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "test-mistral",
+      "name": "Test Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Vérification du résultat\nconsole.log('🎯 Résultat Mistral:');\nconsole.log('Response complète:', JSON.stringify($json, null, 2));\n\nif ($json.choices && $json.choices[0]) {\n  const response = $json.choices[0].message.content;\n  console.log('✅ Réponse Mistral:', response);\n  console.log('✅ Test réussi!');\n  \n  return {\n    json: {\n      success: true,\n      mistral_response: response,\n      test_result: 'SUCCESS'\n    }\n  };\n} else {\n  console.log('❌ Erreur dans la réponse Mistral');\n  return {\n    json: {\n      success: false,\n      error: 'No valid response from Mistral',\n      test_result: 'FAILED'\n    }\n  };\n}"
+      },
+      "id": "verification-resultat",
+      "name": "Vérification Résultat",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Préparation Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Test": {
+      "main": [
+        [
+          {
+            "node": "Test Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Mistral": {
+      "main": [
+        [
+          {
+            "node": "Vérification Résultat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "test-mistral-fix",
+      "name": "Test Mistral Fix"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-03T20:00:00.000Z",
+  "versionId": "1.0.0"
+}

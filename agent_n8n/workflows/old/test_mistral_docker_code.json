@@ -1,0 +1,73 @@
+{
+  "name": "Test Mistral Docker - Node Code",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Test Manuel",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// SOLUTION DOCKER N8N - Node Code avec fetch direct\n// Bypass complet du HTTP Request node problématique\n\n// Configuration validée\nconst API_KEY = 'fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95';\nconst API_URL = 'https://api.mistral.ai/v1/chat/completions';\n\nconst payload = {\n  model: \"mistral-small-latest\",\n  messages: [\n    {\n      role: \"user\",\n      content: \"Analyse cette offre : 'Alternance Cybersécurité chez TechCorp'. Est-ce une offre d'alternance valide en cybersécurité ? Réponds VALIDE ou INVALIDE seulement.\"\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 20\n};\n\nconsole.log('🐳 === NODE CODE DOCKER SOLUTION ===');\nconsole.log('✅ API Key:', API_KEY.substring(0, 10) + '...');\nconsole.log('✅ Endpoint:', API_URL);\nconsole.log('📦 Payload:', JSON.stringify(payload, null, 2));\n\n// Import fetch (disponible dans N8N)\nconst fetch = require('node-fetch');\n\ntry {\n  // Appel API Mistral direct\n  const response = await fetch(API_URL, {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Authorization': `Bearer ${API_KEY}`\n    },\n    body: JSON.stringify(payload)\n  });\n  \n  console.log('🌐 Response status:', response.status);\n  console.log('🌐 Response headers:', JSON.stringify([...response.headers.entries()]));\n  \n  if (!response.ok) {\n    const errorText = await response.text();\n    console.log('❌ Error response body:', errorText);\n    \n    return {\n      json: {\n        success: false,\n        error: `HTTP ${response.status}: ${errorText}`,\n        status_code: response.status,\n        method: 'docker_node_code',\n        timestamp: new Date().toISOString()\n      }\n    };\n  }\n  \n  // Parse de la réponse JSON\n  const data = await response.json();\n  console.log('📥 Raw response:', JSON.stringify(data, null, 2));\n  \n  // Vérification structure Mistral\n  if (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {\n    const content = data.choices[0].message.content.trim();\n    \n    console.log('✅ === DOCKER SUCCESS ! ===');\n    console.log('📝 Mistral response:', content);\n    \n    // Classification\n    const contentUpper = content.toUpperCase();\n    const isValid = contentUpper.includes('VALIDE') && !contentUpper.includes('INVALIDE');\n    const classification = isValid ? 'VALIDE' : 'INVALIDE';\n    \n    console.log('🔍 Classification:', classification);\n    console.log('⚡ Model used:', data.model || 'mistral-small-latest');\n    console.log('📊 Usage:', JSON.stringify(data.usage || {}));\n    \n    return {\n      json: {\n        success: true,\n        mistral_response: content,\n        classification: classification,\n        is_valid: isValid,\n        method: 'docker_node_code',\n        model_used: data.model,\n        usage: data.usage,\n        api_key_used: 'CURSOR_MCP_SERVER',\n        full_response: data,\n        timestamp: new Date().toISOString()\n      }\n    };\n  } else {\n    console.log('❌ Structure réponse Mistral invalide');\n    console.log('🔍 Keys found:', Object.keys(data || {}));\n    \n    return {\n      json: {\n        success: false,\n        error: 'Structure réponse Mistral invalide',\n        received_data: data,\n        method: 'docker_node_code',\n        timestamp: new Date().toISOString()\n      }\n    };\n  }\n  \n} catch (error) {\n  console.log('🚨 === DOCKER ERROR ===');\n  console.log('Error type:', error.constructor.name);\n  console.log('Error message:', error.message);\n  console.log('Error stack:', error.stack);\n  \n  return {\n    json: {\n      success: false,\n      error: `Fetch error: ${error.message}`,\n      error_type: error.constructor.name,\n      method: 'docker_node_code',\n      timestamp: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "id": "mistral-code",
+      "name": "Mistral API Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Analyse finale du résultat Docker\nconsole.log('🎯 === ANALYSE RÉSULTAT DOCKER ===');\nconsole.log('📊 Type:', typeof $input.first().json);\nconsole.log('🔍 Keys:', Object.keys($input.first().json || {}));\n\nconst result = $input.first().json;\n\nif (result.success) {\n  console.log('🎉 === DOCKER MISTRAL SUCCESS ! ===');\n  console.log('📝 Response:', result.mistral_response);\n  console.log('🏷️ Classification:', result.classification);\n  console.log('✅ Is Valid:', result.is_valid);\n  console.log('⚡ Model:', result.model_used);\n  console.log('📈 Usage:', JSON.stringify(result.usage || {}));\n  console.log('🔑 API Key:', result.api_key_used);\n  \n  return {\n    json: {\n      test_status: 'DOCKER_SUCCESS',\n      docker_compatible: true,\n      mistral_working: true,\n      result: result,\n      recommendation: 'Utiliser Node Code pour tous les appels Mistral dans Docker'\n    }\n  };\n} else {\n  console.log('❌ === DOCKER MISTRAL FAILED ===');\n  console.log('🚨 Error:', result.error);\n  console.log('📋 Details:', JSON.stringify(result, null, 2));\n  \n  return {\n    json: {\n      test_status: 'DOCKER_FAILED',\n      docker_compatible: false,\n      mistral_working: false,\n      error: result.error,\n      recommendation: 'Vérifier la clé API et la connectivité réseau Docker'\n    }\n  };\n}"
+      },
+      "id": "analyse-result",
+      "name": "Analyse Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Test Manuel": {
+      "main": [
+        [
+          {
+            "node": "Mistral API Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral API Code": {
+      "main": [
+        [
+          {
+            "node": "Analyse Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "docker-solution",
+      "name": "Docker Compatible"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-05T09:00:00.000Z",
+  "versionId": "8.0.0"
+}
