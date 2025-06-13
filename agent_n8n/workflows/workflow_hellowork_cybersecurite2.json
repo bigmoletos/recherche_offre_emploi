@@ -1,0 +1,411 @@
+{
+  "name": "My workflow 9",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "63086598-b34f-422a-98e6-85393132e3ba",
+      "name": "🚀 Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        -1860,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CONFIGURATION HELLOWORK CYBERSÉCURITÉ - MULTI-REQUÊTES AVEC LIEUX\nconsole.log('🔍 === RECHERCHE HELLOWORK CYBERSÉCURITÉ (multi-combinaisons + lieux) ===');\n\nconst site_name = 'HelloWork';\nconst base_url = 'https://www.hellowork.com';\nconst keywords_main = ['cybersécurité', 'reseau et telecom'];\nconst alternance_types = ['alternance', 'apprentissage'];\nconst contract_types = ['apprentissage', 'contrat-professionnalisation'];\nconst locations = ['Marseille', 'Paris', 'Aix-en-Provence'];\nconst experience_level = 'débutant';\n\nconst urls = [];\nconst configs = [];\n\nfor (const kw of keywords_main) {\n  for (const alt of alternance_types) {\n    for (const loc of locations) {\n      const query = encodeURIComponent(`${kw} ${alt}`);\n      const location_encoded = encodeURIComponent(loc);\n      const url = `${base_url}/fr-fr/emploi/recherche.html?k=${query}&l=${location_encoded}&c=${contract_types.join(',')}`;\n      urls.push(url);\n\n      configs.push({\n        site_name,\n        base_url,\n        search_params: {\n          url,\n          keywords: [kw, alt],\n          location: loc,\n          contract_types,\n          experience_level\n        },\n        scraping_config: {\n          timeout: 30000,\n          retry_attempts: 3,\n          user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n          headers: {\n            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',\n            'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',\n            'Accept-Encoding': 'gzip, deflate, br',\n            'DNT': '1',\n            'Connection': 'keep-alive',\n            'Upgrade-Insecure-Requests': '1'\n          }\n        },\n        expected_results: {\n          min_offers: 1,\n          max_offers: 20,\n          target_alternance: true,\n          target_cybersecurity: true\n        }\n      });\n    }\n  }\n}\n\nconsole.log('🎯 Site cible:', site_name);\nconsole.log('🔗 URLs générées:', urls);\nconsole.log('📋 Nombre de requêtes générées:', configs.length);\n\n// Retourne chaque configuration comme un item séparé pour n8n\nreturn configs.map(cfg => ({ json: cfg }));"
+      },
+      "id": "54bb6d68-65b2-4b77-bd02-eb3ccee04f69",
+      "name": "⚙️ Config HelloWork",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1660,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// SCRAPER HELLOWORK - SIMULATION D'OFFRES ENRICHIES POUR CHAQUE CONFIGURATION\nconst config = $input.item.json;\n\n// Exemple d'offres simulées pour chaque configuration (à adapter selon le scraping réel)\nconst mockOffers = [\n  {\n    id: `offer-${config.search_params.location.replace(/\\\\s+/g, '-').toLowerCase()}-1`,\n    title: `Alternance - Analyste Cybersécurité SOC L1/L2 (${config.search_params.location})`,\n    company: 'Orange Cyberdéfense',\n    location: config.search_params.location,\n    contract_type: 'Contrat d\\'apprentissage',\n    duration: '24 mois',\n    salary_range: '1200-1500€/mois',\n    start_date: '2025-09-01',\n    description: 'Rejoignez notre équipe SOC en alternance ! Formation Master cybersécurité. Missions : surveillance 24/7, analyse incidents sécurité, utilisation SIEM (Splunk, QRadar). Encadrement par experts cybersécurité.',\n    requirements: ['Master 1/2 cybersécurité', 'Bases réseaux/systèmes', 'Motivation sécurité', 'Anglais technique'],\n    benefits: ['Formation certifiante', 'Encadrement expert', 'Possibilité CDI'],\n    posted_date: '2025-06-10',\n    expires_date: '2025-07-10',\n    reference: 'ORANGE-CYBER-ALT-2025',\n    url: config.search_params.url,\n    source_platform: config.site_name\n  }\n  // Tu peux ajouter d'autres offres simulées ici si besoin\n];\n\n// Enrichissement avec métadonnées scraping et analyse préliminaire\nconst enrichedOffers = mockOffers.map((offer, index) => {\n  const isAlternanceContract = ['apprentissage', 'alternance', 'professionnalisation']\n    .some(type => offer.contract_type.toLowerCase().includes(type));\n  const isCyberSecurity = ['cyber', 'sécurité', 'security', 'soc', 'pentest']\n    .some(keyword => (offer.title + ' ' + offer.description).toLowerCase().includes(keyword));\n  const expectedClassification = (isAlternanceContract && isCyberSecurity) ? 'VALIDE' : 'INVALIDE';\n\n  return {\n    ...offer,\n    scraped_at: new Date().toISOString(),\n    scraping_metadata: {\n      source: config.site_name,\n      search_url: config.search_params.url,\n      extraction_method: 'simulation_realistic',\n      offer_index: index\n    },\n    preliminary_analysis: {\n      is_alternance_contract: isAlternanceContract,\n      is_cybersecurity_domain: isCyberSecurity,\n      expected_mistral_classification: expectedClassification,\n      confidence_preliminary: (isAlternanceContract && isCyberSecurity) ? 0.9 : 0.8\n    },\n    ready_for_mistral: true\n  };\n});\n\nreturn enrichedOffers.map(offer => ({ json: offer }));"
+      },
+      "id": "0bedb25e-5f80-4deb-91f1-8b5232350bb7",
+      "name": "🕷️ Scraper HelloWork",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1460,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PRÉPARATION CLASSIFICATION MISTRAL OPTIMISÉE\nconst offer = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION MISTRAL: ${offer.title} ===`);\nconsole.log('🏢 Entreprise:', offer.company);\nconsole.log('💼 Contrat:', offer.contract_type);\nconsole.log('🎯 Classification attendue:', offer.preliminary_analysis.expected_mistral_classification);\n\n// Prompt expert spécialisé alternance cybersécurité\nconst expertPrompt = `EXPERT CLASSIFICATION ALTERNANCE CYBERSÉCURITÉ\n\n=== OFFRE À ANALYSER ===\nTITRE: ${offer.title}\nENTREPRISE: ${offer.company}\nTYPE CONTRAT: ${offer.contract_type}\nLIEU: ${offer.location}\nDURÉE: ${offer.duration}\nSALAIRE: ${offer.salary_range}\nDESCRIPTION: ${offer.description}\nEXIGENCES: ${offer.requirements ? offer.requirements.join(', ') : 'Non spécifiées'}\n\n=== CRITÈRES VALIDATION STRICTE ===\n\n1. 🎯 TYPE CONTRAT (OBLIGATOIRE):\n   ✅ VALIDE: apprentissage, alternance, contrat professionnalisation, contrat d'apprentissage\n   ❌ INVALIDE: stage, CDI, CDD, mission, freelance\n\n2. 🛡️ DOMAINE CYBERSÉCURITÉ (OBLIGATOIRE):\n   ✅ VALIDE: reseau, telecom, cybersécurité, sécurité informatique, SOC, SIEM, pentest, audit sécurité, analyse sécurité\n   ❌ INVALIDE: développement général, marketing, communication, commercial, RH\n\n3. 📚 NIVEAU FORMATION (IMPORTANT):\n   ✅ PRÉFÉRÉ: junior, débutant, formation, étudiant\n   ❌ EXCLUSION: senior 5+ ans, expert, manager\n\n=== EXCLUSIONS AUTOMATIQUES ===\n- Stages (même en cybersécurité)\n- Postes seniors/experts (5+ ans expérience)\n- CDI/CDD classiques sans formation\n- Domaines non-cybersécurité ou non reseau et telecom\n\n=== FORMAT RÉPONSE OBLIGATOIRE ===\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [Explication précise en 1 phrase]\nCONFIANCE: [0.1 à 1.0]\n\nAnalyse maintenant cette offre.`;\n\n// Configuration Mistral optimisée\nconst mistralPayload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert RH spécialisé dans l'analyse d'offres d'alternance en cybersécurité. Tu appliques des critères stricts : SEULES les vraies alternances/apprentissages EN cybersécurité ET EN reseau et telecom sont VALIDES. Sois très précis dans tes classifications. La durée du stage doit être comprise entre 1 et 2 ans, c'est pour passer un master 1 et master 2\"\n    },\n    {\n      role: \"user\",\n      content: expertPrompt\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 300\n};\n\nconsole.log('📋 Payload Mistral Large créé');\nconsole.log('🌡️ Température:', mistralPayload.temperature);\nconsole.log('📏 Max tokens:', mistralPayload.max_tokens);\n\nreturn {\n  json: {\n    ...offer,\n    mistral_request: {\n      payload_json: JSON.stringify(mistralPayload),\n      model: mistralPayload.model,\n      temperature: mistralPayload.temperature,\n      max_tokens: mistralPayload.max_tokens,\n      prompt_length: expertPrompt.length\n    },\n    classification_prompt: expertPrompt,\n    prepared_at: new Date().toISOString(),\n    processing_status: 'READY_FOR_MISTRAL_CLASSIFICATION'\n  }\n};"
+      },
+      "id": "27b549b5-4fda-455b-ac66-2d02eac84b4a",
+      "name": "🎯 Préparer Mistral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1260,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.mistral_request.payload_json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f4a16a63-2ff0-443f-aed9-20c624bd7bdd",
+      "name": "🧠 API Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1060,
+        160
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-valid-offer",
+              "leftValue": "={{ $json.mistral_result.is_valid_offer }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "is true"
+              }
+            },
+            {
+              "id": "91dc5fa4-0311-48b8-8898-b951d141c566",
+              "leftValue": "={{ $json.mistral_result.is_valid_offer }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "dec6fe65-eef4-4efe-a6c2-67947e08349c",
+      "name": "🔍 Filtrer Valides",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        160
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "action-type",
+              "name": "action",
+              "value": "ALTERNANCE_CYBERSECURITE_TROUVEE",
+              "type": "string"
+            },
+            {
+              "id": "offer-title",
+              "name": "titre",
+              "value": "{{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "offer-company",
+              "name": "entreprise",
+              "value": "{{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "offer-contract",
+              "name": "contrat",
+              "value": "{{ $json.contract_type }}",
+              "type": "string"
+            },
+            {
+              "id": "offer-location",
+              "name": "lieu",
+              "value": "{{ $json.location }}",
+              "type": "string"
+            },
+            {
+              "id": "offer-salary",
+              "name": "salaire",
+              "value": "{{ $json.salary_range }}",
+              "type": "string"
+            },
+            {
+              "id": "offer-duration",
+              "name": "duree",
+              "value": "{{ $json.duration }}",
+              "type": "string"
+            },
+            {
+              "id": "offer-url",
+              "name": "lien_candidature",
+              "value": "{{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "mistral-justification",
+              "name": "justification_ia",
+              "value": "{{ $json.mistral_result.justification }}",
+              "type": "string"
+            },
+            {
+              "id": "confidence-score",
+              "name": "score_confiance",
+              "value": null,
+              "type": "number"
+            },
+            {
+              "id": "summary",
+              "name": "resume_offre",
+              "value": "✅ {{ $json.title }} chez {{ $json.company }} - {{ $json.contract_type }} ({{ $json.duration }}) à {{ $json.location }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eecdc103-d2e3-42eb-9bd8-2789440bdb7b",
+      "name": "✅ Formater Offres Retenues",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -460,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "action-rejected",
+              "name": "action",
+              "value": "OFFRE_REJETEE",
+              "type": "string"
+            },
+            {
+              "id": "rejected-title",
+              "name": "titre",
+              "value": "{{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "rejected-company",
+              "name": "entreprise",
+              "value": "{{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "rejection-reason",
+              "name": "raison_rejet",
+              "value": "{{ $json.mistral_result.classification }} - {{ $json.mistral_result.justification }}",
+              "type": "string"
+            },
+            {
+              "id": "contract-issue",
+              "name": "probleme_contrat",
+              "value": "{{ $json.contract_type }} (attendu: alternance/apprentissage)",
+              "type": "string"
+            },
+            {
+              "id": "summary-rejected",
+              "name": "resume",
+              "value": "❌ {{ $json.title }} chez {{ $json.company }} - Rejeté: {{ $json.mistral_result.classification }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "14355d91-6a8f-4fda-8ef9-c729b80eaa26",
+      "name": "❌ Formater Offres Rejetées",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -460,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT RÉPONSE MISTRAL AVEC PARSING ROBUSTE\nconst originalOffer = $('🎯 Préparer Mistral').item.json;\nconst mistralResponse = $input.item.json;\n\nconsole.log(`✅ === CLASSIFICATION RÉUSSIE: ${originalOffer.title} ===`);\nconsole.log('🏢 Entreprise:', originalOffer.company);\nconsole.log('💼 Type contrat:', originalOffer.contract_type);\n\n// Validation structure réponse Mistral\nif (!mistralResponse.choices || !mistralResponse.choices[0] || !mistralResponse.choices[0].message) {\n  console.log('❌ Structure réponse Mistral invalide');\n  return {\n    json: {\n      ...originalOffer,\n      mistral_result: {\n        classification: 'ERREUR_STRUCTURE',\n        justification: 'Réponse API Mistral malformée',\n        confidence: 0,\n        is_valid_offer: false,\n        error_type: 'INVALID_API_RESPONSE'\n      }\n    }\n  };\n}\n\nconst mistralContent = mistralResponse.choices[0].message.content.trim();\nconsole.log('📝 Réponse Mistral complète:', mistralContent);\n\n// Parsing robuste avec regex\nlet classification = 'INCERTAIN';\nlet justification = 'Non trouvée';\nlet confidence = 0.5;\n\n// Extraction CLASSIFICATION avec patterns multiples\nconst classificationPatterns = [\n  /CLASSIFICATION:\\s*(VALIDE|INVALIDE)/i,\n  /^(VALIDE|INVALIDE)/i,\n  /(VALIDE|INVALIDE)(?!.*INVALIDE|.*VALIDE)/i\n];\n\nfor (const pattern of classificationPatterns) {\n  const match = mistralContent.match(pattern);\n  if (match) {\n    classification = match[1].toUpperCase();\n    console.log('🎯 Classification extraite:', classification);\n    break;\n  }\n}\n\n// Extraction JUSTIFICATION\nconst justificationPatterns = [\n  /JUSTIFICATION:\\s*([^\\n]+)/i,\n  /(?:VALIDE|INVALIDE)[^\\n]*:\\s*([^\\n]+)/i\n];\n\nfor (const pattern of justificationPatterns) {\n  const match = mistralContent.match(pattern);\n  if (match) {\n    justification = match[1].trim();\n    console.log('📋 Justification extraite:', justification);\n    break;\n  }\n}\n\n// Extraction CONFIANCE\nconst confidencePatterns = [\n  /CONFIANCE:\\s*([0-9.]+)/i,\n  /CONFIDENCE:\\s*([0-9.]+)/i\n];\n\nfor (const pattern of confidencePatterns) {\n  const match = mistralContent.match(pattern);\n  if (match) {\n    confidence = parseFloat(match[1]);\n    console.log('📊 Confiance extraite:', confidence);\n    break;\n  }\n}\n\n// Validation cohérence\nconst isValid = classification === 'VALIDE';\nconst expectedClassification = originalOffer.preliminary_analysis.expected_mistral_classification;\nconst isCorrectPrediction = classification === expectedClassification;\nconst finalConfidence = classification !== 'INCERTAIN' ? Math.max(confidence, 0.8) : 0.3;\n\n// Vérification supplémentaire pour alternance cybersécurité\nconst isAlternanceContract = ['apprentissage', 'alternance', 'professionnalisation']\n  .some(type => originalOffer.contract_type.toLowerCase().includes(type));\n\nconst isCyberSecurity = ['cyber', 'sécurité', 'security', 'soc', 'pentest']\n  .some(keyword => \n    (originalOffer.title + ' ' + originalOffer.description).toLowerCase().includes(keyword)\n  );\n\nconst isAlternanceCybersecurity = isAlternanceContract && isCyberSecurity;\n\nconsole.log(`🎯 Classification finale: ${classification}`);\nconsole.log(`📊 Offre valide: ${isValid}`);\nconsole.log(`✅ Prédiction correcte: ${isCorrectPrediction}`);\nconsole.log(`📊 Confiance finale: ${finalConfidence}`);\nconsole.log(`🎓 Alternance Cybersécurité: ${isAlternanceCybersecurity}`);\n\n// RÉSULTAT FINAL STRUCTURÉ\nconst finalResult = {\n  // Identifiants offre\n  offer_id: originalOffer.id,\n  title: originalOffer.title,\n  company: originalOffer.company,\n  contract_type: originalOffer.contract_type,\n  location: originalOffer.location,\n  duration: originalOffer.duration,\n  salary_range: originalOffer.salary_range,\n  url: originalOffer.url,\n  source_platform: originalOffer.source_platform,\n  \n  // Résultat classification Mistral\n  mistral_result: {\n    classification: classification,\n    justification: justification,\n    confidence: finalConfidence,\n    is_valid_offer: isValid,\n    expected_classification: expectedClassification,\n    is_correct_prediction: isCorrectPrediction,\n    processing_status: 'CLASSIFIED_SUCCESS'\n  },\n  \n  // Métadonnées techniques\n  technical_metadata: {\n    model_used: mistralResponse.model,\n    tokens_used: mistralResponse.usage,\n    raw_mistral_response: mistralContent,\n    classified_at: new Date().toISOString(),\n    processing_source: 'HelloWork_workflow'\n  },\n  \n  // Flags pour suite du traitement\n  is_alternance_cybersecurity: isAlternanceCybersecurity,\n  needs_manual_review: classification === 'INCERTAIN',\n  quality_score: finalConfidence\n};\n\nif (isValid) {\n  console.log('🎉 ✅ OFFRE VALIDÉE POUR ALTERNANCE CYBERSÉCURITÉ');\n} else {\n  console.log(`❌ OFFRE REJETÉE: ${justification}`);\n}\n\nreturn { json: finalResult };"
+      },
+      "id": "66c9fe8f-9603-4f48-804c-f5922fdfbc5e",
+      "name": "✅ Traiter Succès",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// TRAITEMENT ERREUR MISTRAL\nconst originalOffer = $('🎯 Préparer Mistral').item.json;\nconst errorData = $input.item;\n\nconsole.log(`❌ === ERREUR MISTRAL: ${originalOffer.title} ===`);\nconsole.log('🔍 Code erreur:', errorData.httpCode);\nconsole.log('📋 Message:', errorData.message);\n\n// Classification erreur\nlet errorType = 'UNKNOWN_ERROR';\nswitch(errorData.httpCode) {\n  case 401: errorType = 'AUTH_ERROR'; break;\n  case 422: errorType = 'VALIDATION_ERROR'; break;\n  case 429: errorType = 'RATE_LIMIT'; break;\n  case 500: errorType = 'SERVER_ERROR'; break;\n  default: errorType = 'NETWORK_ERROR';\n}\n\nconst errorResult = {\n  offer_id: originalOffer.id,\n  title: originalOffer.title,\n  company: originalOffer.company,\n  contract_type: originalOffer.contract_type,\n  source_platform: originalOffer.source_platform,\n  url: originalOffer.url,\n  \n  mistral_result: {\n    classification: 'ERREUR_API',\n    justification: `Erreur ${errorType}: ${errorData.message || 'Erreur inconnue'}`,\n    confidence: 0,\n    is_valid_offer: false,\n    processing_status: 'CLASSIFICATION_ERROR'\n  },\n  \n  error_details: {\n    error_type: errorType,\n    error_code: errorData.httpCode,\n    error_message: errorData.message,\n    error_timestamp: new Date().toISOString()\n  },\n  \n  is_alternance_cybersecurity: false,\n  needs_manual_review: true\n};\n\nconsole.log('📊 Erreur documentée');\nreturn { json: errorResult };"
+      },
+      "id": "24ad685f-6dfb-4b4e-96b0-ec8d402f1b22",
+      "name": "❌ Traiter Erreur",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        260
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🚀 Start": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Config HelloWork",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Config HelloWork": {
+      "main": [
+        [
+          {
+            "node": "🕷️ Scraper HelloWork",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🕷️ Scraper HelloWork": {
+      "main": [
+        [
+          {
+            "node": "🎯 Préparer Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Préparer Mistral": {
+      "main": [
+        [
+          {
+            "node": "🧠 API Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 API Mistral": {
+      "main": [
+        [
+          {
+            "node": "✅ Traiter Succès",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Traiter Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Traiter Succès": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrer Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Traiter Erreur": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrer Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Filtrer Valides": {
+      "main": [
+        [
+          {
+            "node": "✅ Formater Offres Retenues",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Formater Offres Rejetées",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "482a7ea0-c1a5-4355-83d8-c95c472bbfa2",
+  "meta": {
+    "instanceId": "77649bb8ece500ac0c757974f51e9cabb1d2bb2ab3e605617a5d419377d2a6a4"
+  },
+  "id": "YT0Vz3kHH12ftLIe",
+  "tags": []
+}
