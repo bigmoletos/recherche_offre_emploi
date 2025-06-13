@@ -153,6 +153,8 @@ agent_python/venv/
 *.doc
 *.docx
 # *.json
-!services/cv-extraction-service/src/models/schemas.json
-!services/excel-generator-service/src/models/schemas.jsonclient_secret_*.json
+# !services/cv-extraction-service/src/models/schemas.json
+# !services/excel-generator-service/src/models/schemas.jsonclient_secret_*.json
 client_secret_794078299208-u0k4l5mb54thqb9kgv8v3p1ec61m9l9o.apps.googleusercontent.com*client_secret_*.json
+recherche_offre_emploi\client_secret_794078299208-u0k4l5mb54thqb9kgv8v3p1ec61m9l9o.apps.googleusercontent.com.json
+client_secret_794078299208-u0k4l5mb54thqb9kgv8v3p1ec61m9l9o.apps.googleusercontent.com.json
