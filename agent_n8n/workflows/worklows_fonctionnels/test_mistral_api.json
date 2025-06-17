@@ -1,0 +1,189 @@
+{
+  "name": "test_mistral_api",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "333bbf84-82a2-4901-a9de-d594b64b4b13",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "title",
+              "value": "Contrat d'apprentissage - Analyste Cybersécurité SOC"
+            },
+            {
+              "name": "company",
+              "value": "Orange Cyberdefense"
+            },
+            {
+              "name": "description",
+              "value": "Formation alternance 24 mois analyste cybersécurité SOC."
+            },
+            {
+              "name": "contract_type",
+              "value": "Contrat d'apprentissage"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cc4259ca-b420-42f7-894b-03c39431917d",
+      "name": "Test Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "prompt",
+              "value": "ANALYSE OFFRE ALTERNANCE CYBERSÉCURITÉ:\n\nTITRE: {{$json.title}}\nENTREPRISE: {{$json.company}}\nCONTRAT: {{$json.contract_type}}\nDESCRIPTION: {{$json.description}}\n\nCRITÈRES VALIDATION:\n✅ CONTRAT = apprentissage OU alternance OU contrat pro\n✅ DOMAINE = cybersécurité OU sécurité informatique\n❌ EXCLUER = stage, CDI, CDD, commercial, marketing\n\nRÉPONDS EXACTEMENT:\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [raison courte]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "479fc370-72be-49d6-bb07-40b9669a5fa8",
+      "name": "Prepare Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "options": {}
+      },
+      "id": "4769d827-3663-444b-8575-07858e82e179",
+      "name": "Mistral HTTP Direct",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "classification_result",
+              "value": "{{$json.choices[0].message.content}}"
+            },
+            {
+              "name": "tokens_used",
+              "value": "{{$json.usage.total_tokens}}"
+            },
+            {
+              "name": "model_used",
+              "value": "{{$json.model}}"
+            },
+            {
+              "name": "status",
+              "value": "SUCCESS_DIRECT_VALUE"
+            },
+            {
+              "name": "timestamp",
+              "value": "{{$now}}"
+            },
+            {
+              "name": "api_call",
+              "value": "MISTRAL_DIRECT_HARDCODED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "235f828f-3a6e-4d2b-bb17-3f14c9cc12a5",
+      "name": "Extract Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Test Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prompt": {
+      "main": [
+        [
+          {
+            "node": "Mistral HTTP Direct",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral HTTP Direct": {
+      "main": [
+        [
+          {
+            "node": "Extract Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4ceeb8fc-02b3-4b44-b2c1-295b9356263e",
+  "meta": {
+    "instanceId": "77649bb8ece500ac0c757974f51e9cabb1d2bb2ab3e605617a5d419377d2a6a4"
+  },
+  "id": "PDNXHkj1TsOIr7ny",
+  "tags": [
+    {
+      "createdAt": "2025-06-05T14:41:49.672Z",
+      "updatedAt": "2025-06-05T14:41:49.672Z",
+      "id": "9JJmHUXl3uUA6uyg",
+      "name": "mistral-direct"
+    }
+  ]
+}

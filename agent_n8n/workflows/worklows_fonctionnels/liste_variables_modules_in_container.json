@@ -1,0 +1,256 @@
+{
+  "name": "liste_variables_modules_in_container",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        -20
+      ],
+      "id": "ede12b95-25a4-41ed-bee1-215368e0b39e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://www.hellowork.com/fr-fr/emploi/recherche.html",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "k",
+              "value": "cybersécurité"
+            },
+            {
+              "name": "l",
+              "value": "MARSEILLE"
+            },
+            {
+              "name": "c",
+              "value": "Alternance"
+            },
+            {
+              "name": "st",
+              "value": "relevance"
+            },
+            {
+              "name": "cod",
+              "value": "5"
+            },
+            {
+              "name": "ray",
+              "value": "50"
+            },
+            {
+              "name": "d",
+              "value": "all"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -180,
+        -20
+      ],
+      "id": "48f4c1e3-b551-4c2a-a157-98a1eb720f76",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Script final - Détection modules + variables d'environnement N8N\nimport sys\nimport os\n\n# Variables d'environnement attendues dans N8N\nexpected_env_vars = {\n    # Variables N8N\n    'LOGIN_N8N': 'Identifiant N8N',\n    'PASSWORD_N8N': 'Mot de passe N8N',\n    'N8N_ENCRYPTION_KEY': 'Clé de chiffrement N8N',\n\n    # Variables Mistral\n    'mistral_key_site_emploi': 'Clé API Mistral pour scraping emploi',\n    'MISTRAL_API_KEY_CURSOR_MCP_SERVER': 'Clé API Mistral pour serveur MCP',\n\n    # Variables système\n    'NODE_ENV': 'Environnement Node.js',\n    'N8N_LOG_LEVEL': 'Niveau de logs N8N'\n}\n\n# Modules disponibles dans N8N Pyodide\ncore_modules = [\n    ('requests', ['requests'], 'Requêtes HTTP'),\n    ('beautifulsoup4', ['bs4', 'beautifulsoup4'], 'Parsing HTML/XML'),\n    ('urllib3', ['urllib3'], 'HTTP client bas niveau'),\n    ('pandas', ['pandas'], 'Manipulation données'),\n    ('numpy', ['numpy'], 'Calculs numériques'),\n    ('datetime', ['datetime'], 'Gestion dates/temps'),\n    ('uuid', ['uuid'], 'Génération UUID'),\n    ('hashlib', ['hashlib'], 'Fonctions de hachage'),\n    ('xml.etree.ElementTree', ['xml.etree.ElementTree'], 'Parser XML'),\n    ('csv', ['csv'], 'Lecture/écriture CSV'),\n    ('json', ['json'], 'Manipulation JSON'),\n    ('re', ['re'], 'Expressions régulières'),\n    ('base64', ['base64'], 'Encodage base64'),\n    ('urllib.parse', ['urllib.parse'], 'Parsing URLs')\n]\n\ndef check_module_pyodide_advanced(module_display_name, import_names):\n    \"\"\"Test d'import ultra-avancé spécialement pour Pyodide N8N\"\"\"\n    errors = []\n\n    for import_name in import_names:\n        try:\n            # Méthode 1: Import avec exec pour Pyodide\n            namespace = {}\n            exec(f\"import {import_name}\", namespace)\n            if import_name in namespace:\n                return True, f\"✅ {module_display_name} opérationnel (exec)\"\n\n        except Exception as e:\n            errors.append(f\"exec-{import_name}: {str(e)[:50]}\")\n\n        try:\n            # Méthode 2: Import classique\n            if '.' in import_name:\n                parts = import_name.split('.')\n                module = __import__(import_name)\n                for part in parts[1:]:\n                    module = getattr(module, part)\n            else:\n                module = __import__(import_name)\n\n            # Test d'utilisation réelle du module\n            if import_name == 'requests' and hasattr(module, 'get'):\n                return True, f\"✅ {module_display_name} opérationnel (import+test)\"\n            elif import_name in ['bs4', 'beautifulsoup4'] and (hasattr(module, 'BeautifulSoup') or hasattr(module, 'BeautifulSoup4')):\n                return True, f\"✅ {module_display_name} opérationnel (import+test)\"\n            elif import_name == 'pandas' and hasattr(module, 'DataFrame'):\n                return True, f\"✅ {module_display_name} opérationnel (import+test)\"\n            elif import_name == 'numpy' and hasattr(module, 'array'):\n                return True, f\"✅ {module_display_name} opérationnel (import+test)\"\n            elif import_name == 'urllib3' and hasattr(module, 'PoolManager'):\n                return True, f\"✅ {module_display_name} opérationnel (import+test)\"\n            elif import_name not in ['requests', 'bs4', 'beautifulsoup4', 'pandas', 'numpy', 'urllib3']:\n                return True, f\"✅ {module_display_name} opérationnel (import)\"\n\n        except Exception as e:\n            errors.append(f\"import-{import_name}: {str(e)[:50]}\")\n\n        try:\n            # Méthode 3: Vérification via sys.modules avec patterns\n            for module_key in sys.modules.keys():\n                if import_name == module_key or module_key.startswith(f\"{import_name}.\"):\n                    return True, f\"✅ {module_display_name} détecté (sys.modules: {module_key})\"\n\n        except Exception as e:\n            errors.append(f\"sys-{import_name}: {str(e)[:50]}\")\n\n    # Si toujours pas trouvé, afficher les erreurs pour debug\n    error_summary = \" | \".join(errors[:2])  # Limiter pour lisibilité\n    return False, f\"❌ {module_display_name} non disponible ({error_summary})\"\n\ndef check_env_vars():\n    \"\"\"Vérification des variables d'environnement\"\"\"\n    env_results = []\n\n    for var_name, description in expected_env_vars.items():\n        value = os.environ.get(var_name)\n\n        if value:\n            # Masquer les secrets pour la sécurité\n            if 'key' in var_name.lower() or 'password' in var_name.lower():\n                display_value = f\"***{value[-4:]}\" if len(value) > 4 else \"***\"\n            else:\n                display_value = value\n\n            env_results.append({\n                'name': var_name,\n                'status': 'found',\n                'message': f'✅ {description} définie',\n                'value': display_value\n            })\n        else:\n            env_results.append({\n                'name': var_name,\n                'status': 'missing',\n                'message': f'❌ {description} manquante',\n                'value': 'N/A'\n            })\n\n    return env_results\n\ndef create_dotenv_alternative():\n    \"\"\"Alternative dotenv avec accès aux variables N8N\"\"\"\n    try:\n        # Test d'accès aux variables d'environnement\n        available_vars = [\n            var for var in expected_env_vars.keys() if os.environ.get(var)\n        ]\n\n        if available_vars:\n            return True, f\"✅ Alternative dotenv: accès à {len(available_vars)} variables\"\n        else:\n            return False, \"❌ Aucune variable d'environnement accessible\"\n    except Exception as e:\n        return False, f\"❌ Erreur dotenv alternative: {str(e)}\"\n\ndef get_pyodide_modules_info():\n    \"\"\"Informations détaillées sur les modules Pyodide chargés\"\"\"\n    try:\n        # Recherche de modules suspects\n        pyodide_modules = []\n        target_modules = ['requests', 'bs4', 'beautifulsoup4', 'urllib3', 'pandas', 'numpy', 'certifi', 'charset', 'idna']\n\n        for module_name in sys.modules.keys():\n            for target in target_modules:\n                if target in module_name.lower():\n                    pyodide_modules.append(module_name)\n                    break\n\n        # Information sur le total des modules chargés\n        total_modules = len(sys.modules)\n\n        if pyodide_modules:\n            return True, f\"✅ {len(pyodide_modules)} modules Pyodide: {', '.join(pyodide_modules[:3])}... (Total: {total_modules})\"\n        else:\n            return False, f\"❌ Aucun module Pyodide détecté sur {total_modules} modules système\"\n    except Exception as e:\n        return False, f\"❌ Erreur détection Pyodide: {str(e)}\"\n\ndef test_direct_imports():\n    \"\"\"Test direct des imports critiques pour diagnostic\"\"\"\n    test_results = []\n\n    # Test requests direct\n    try:\n        import requests\n        test_results.append(\"requests: ✅ OK\")\n    except Exception as e:\n        test_results.append(f\"requests: ❌ {str(e)[:30]}\")\n\n    # Test beautifulsoup4 direct\n    try:\n        from bs4 import BeautifulSoup\n        test_results.append(\"bs4: ✅ OK\")\n    except Exception as e:\n        test_results.append(f\"bs4: ❌ {str(e)[:30]}\")\n\n    # Test pandas direct\n    try:\n        import pandas\n        test_results.append(\"pandas: ✅ OK\")\n    except Exception as e:\n        test_results.append(f\"pandas: ❌ {str(e)[:30]}\")\n\n    return \" | \".join(test_results[:3])\n\n# Tests principaux - Exécution directe pour N8N\nitems = []\n\n# 1. MODULES PYTHON\ninstalled_count = 0\nfor module_name, import_names, description in core_modules:\n    is_installed, message = check_module_pyodide_advanced(module_name, import_names)\n    if is_installed:\n        installed_count += 1\n\n    items.append({\n        'json': {\n            'module': module_name,\n            'status': 'installed' if is_installed else 'not installed',\n            'message': message,\n            'description': description,\n            'type': 'module'\n        }\n    })\n\n# 2. TEST DIRECT IMPORTS\ndirect_test_result = test_direct_imports()\nitems.append({\n    'json': {\n        'module': 'TEST_IMPORTS_DIRECT',\n        'status': 'info',\n        'message': direct_test_result,\n        'description': 'Tests directs d\\'import pour diagnostic',\n        'type': 'diagnostic'\n    }\n})\n\n# 3. ALTERNATIVE DOTENV\ndotenv_success, dotenv_message = create_dotenv_alternative()\nitems.append({\n    'json': {\n        'module': 'python-dotenv (alternative)',\n        'status': 'alternative_available' if dotenv_success else 'not available',\n        'message': dotenv_message,\n        'description': 'Gestion variables environnement',\n        'type': 'alternative'\n    }\n})\n\n# 4. INFORMATIONS PYODIDE\npyodide_success, pyodide_message = get_pyodide_modules_info()\nitems.append({\n    'json': {\n        'module': 'PYODIDE_MODULES',\n        'status': 'info',\n        'message': pyodide_message,\n        'description': 'Modules chargés dans sys.modules',\n        'type': 'pyodide'\n    }\n})\n\n# 5. VARIABLES D'ENVIRONNEMENT\nenv_results = check_env_vars()\nfound_vars = sum(1 for result in env_results if result['status'] == 'found')\n\nfor result in env_results:\n    items.append({\n        'json': {\n            'module': result['name'],\n            'status': result['status'],\n            'message': result['message'],\n            'description': f\"Valeur: {result['value']}\",\n            'type': 'environment'\n        }\n    })\n\n# 6. RÉSUMÉ MODULES\nitems.append({\n    'json': {\n        'module': 'RÉSUMÉ_MODULES',\n        'status': 'info',\n        'message': f'Modules Python: {installed_count}/{len(core_modules)} disponibles',\n        'description': 'Environnement N8N Pyodide optimisé',\n        'type': 'summary'\n    }\n})\n\n# 7. RÉSUMÉ VARIABLES\nitems.append({\n    'json': {\n        'module': 'RÉSUMÉ_ENVIRONNEMENT',\n        'status': 'info',\n        'message': f'Variables: {found_vars}/{len(expected_env_vars)} définies',\n        'description': 'Configuration N8N et secrets',\n        'type': 'summary'\n    }\n})\n\n# 8. INFORMATIONS SYSTÈME\nitems.append({\n    'json': {\n        'module': 'SYSTÈME',\n        'status': 'info',\n        'message': f'Python {sys.version.split()[0]} - Pyodide WebAssembly',\n        'description': 'Environnement d\\'exécution N8N',\n        'type': 'system'\n    }\n})\n\n# 9. RECOMMANDATIONS\nitems.append({\n    'json': {\n        'module': 'RECOMMANDATION',\n        'status': 'info',\n        'message': 'Variables env: ${{$env.VARIABLE_NAME}} | Secrets: Credentials Store N8N',\n        'description': 'Bonnes pratiques N8N',\n        'type': 'tip'\n    }\n})\n\n# Retour pour N8N - Variable globale items\nreturn items\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -280
+      ],
+      "id": "6db4e70d-b3d4-4a78-8e25-e9cc8b26cab1",
+      "name": "check modules et variables installés"
+    },
+    {
+      "parameters": {
+        "operation": "xls",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -20,
+        -200
+      ],
+      "id": "61b44c88-22b4-4966-9509-a569e13f4150",
+      "name": "Convert to File",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "resource": "spreadsheet",
+        "title": "workflow_n8n_liste_module_et_variable_image_docker",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -20,
+        -400
+      ],
+      "id": "45754d79-f451-4afc-a580-6d5759fc2958",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "N5mqsA7CCJvqiDcg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.spreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1do_hKAPR76tiCGBsdupQI-D2An4xPLhtIEmFfONPQWA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "spreadsheetId"
+          ],
+          "schema": [
+            {
+              "id": "spreadsheetId",
+              "displayName": "spreadsheetId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sheets",
+              "displayName": "sheets",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "spreadsheetUrl",
+              "displayName": "spreadsheetUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        200,
+        -400
+      ],
+      "id": "c29eb0b9-ff8b-4766-b234-ff8d44aca2d3",
+      "name": "Google Sheets1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "N5mqsA7CCJvqiDcg",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "check modules et variables installés",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "check modules et variables installés": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b688fa71-ed5d-4d8d-a9b1-e2591c8408c9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "77649bb8ece500ac0c757974f51e9cabb1d2bb2ab3e605617a5d419377d2a6a4"
+  },
+  "id": "wgyyFMpqzXfU9RsB",
+  "tags": []
+}

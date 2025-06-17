@@ -1,0 +1,177 @@
+{
+  "name": "test_ia-agent",
+  "nodes": [
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        640,
+        140
+      ],
+      "id": "19778bbb-4f0c-4946-9064-4080da803131",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        360,
+        140
+      ],
+      "id": "8df8e33e-5ded-4f06-8d89-0aceb7acf8f8",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "model": "mistral-large-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        360,
+        340
+      ],
+      "id": "1b7e4a92-0226-40a1-ac80-f6a91df6bedd",
+      "name": "Mistral Cloud Chat Model",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "BIdn4f2opZSVuXol",
+          "name": "MistralApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.hellowork.com/fr-fr/emploi/recherche.html?c=Alternance",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {},
+        "optimizeResponse": true
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        400
+      ],
+      "id": "f2adcead-b58c-40a8-bbb1-8678db3e9d7d",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "JJF5Et52taezLYXq",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "separator": "\\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserItemList",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        380
+      ],
+      "id": "1bcb129f-6e1a-4b91-9b8e-c284962a1f7a",
+      "name": "Item List Output Parser"
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 50
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        520,
+        340
+      ],
+      "id": "194b9f0f-79e1-4b6b-9349-cfc9293f4660",
+      "name": "Simple Memory1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item List Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b6d0ec5f-87eb-4966-8b70-1310b03cfc55",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "77649bb8ece500ac0c757974f51e9cabb1d2bb2ab3e605617a5d419377d2a6a4"
+  },
+  "id": "dDlEuVsUBfeFZJm1",
+  "tags": [
+    {
+      "createdAt": "2025-06-05T14:24:28.435Z",
+      "updatedAt": "2025-06-05T14:24:28.435Z",
+      "id": "h2PvfOgFAxpALyZQ",
+      "name": "mistral-working"
+    }
+  ]
+}

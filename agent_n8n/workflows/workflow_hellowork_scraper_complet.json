@@ -1,0 +1,703 @@
+{
+    "name": "HelloWork_Scraper_Complet",
+    "nodes": [
+        {
+            "parameters": {},
+            "id": "start-node",
+            "name": "🚀 Start",
+            "type": "n8n-nodes-base.start",
+            "typeVersion": 1,
+            "position": [
+                -1860,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// CONFIGURATION HELLOWORK CYBERSÉCURITÉ - MULTI-REQUÊTES AVEC LIEUX\nconsole.log('🔍 === RECHERCHE HELLOWORK CYBERSÉCURITÉ (multi-combinaisons + lieux) ===');\n\nconst site_name = 'HelloWork';\nconst base_url = 'https://www.hellowork.com';\nconst keywords_main = ['cybersécurité', 'reseau et telecom'];\nconst alternance_types = ['alternance', 'apprentissage'];\nconst contract_types = ['apprentissage', 'contrat-professionnalisation'];\nconst locations = ['Marseille', 'Paris', 'Aix-en-Provence'];\nconst experience_level = 'débutant';\n\nconst urls = [];\nconst configs = [];\n\nfor (const kw of keywords_main) {\n  for (const alt of alternance_types) {\n    for (const loc of locations) {\n      const query = encodeURIComponent(`${kw} ${alt}`);\n      const location_encoded = encodeURIComponent(loc);\n      const url = `${base_url}/fr-fr/emploi/recherche.html?k=${query}&l=${location_encoded}&c=${contract_types.join(',')}`;\n      urls.push(url);\n\n      configs.push({\n        site_name,\n        base_url,\n        search_params: {\n          url,\n          keywords: [kw, alt],\n          location: loc,\n          contract_types,\n          experience_level\n        },\n        scraping_config: {\n          timeout: 30000,\n          retry_attempts: 3,\n          user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n          headers: {\n            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',\n            'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',\n            'Accept-Encoding': 'gzip, deflate, br',\n            'DNT': '1',\n            'Connection': 'keep-alive',\n            'Upgrade-Insecure-Requests': '1'\n          }\n        },\n        expected_results: {\n          min_offers: 1,\n          max_offers: 20,\n          target_alternance: true,\n          target_cybersecurity: true\n        }\n      });\n    }\n  }\n}\n\nconsole.log('🎯 Site cible:', site_name);\nconsole.log('🔗 URLs générées:', urls);\nconsole.log('📋 Nombre de requêtes générées:', configs.length);\n\n// Retourne chaque configuration comme un item séparé pour n8n\nreturn configs.map(cfg => ({ json: cfg }));"
+            },
+            "id": "config-node",
+            "name": "⚙️ Config HelloWork",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -1660,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $json.search_params.url }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "User-Agent",
+                            "value": "={{ $json.scraping_config.user_agent }}"
+                        },
+                        {
+                            "name": "Accept",
+                            "value": "={{ $json.scraping_config.headers.Accept }}"
+                        },
+                        {
+                            "name": "Accept-Language",
+                            "value": "={{ $json.scraping_config.headers['Accept-Language'] }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": "={{ $json.scraping_config.timeout }}"
+                }
+            },
+            "id": "e8cce86f-29af-40fc-9c4d-9b3927cae677",
+            "name": "🌐 Fetch Page",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -1440,
+                -140
+            ],
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "const input = $input.item.json;
+if (!input) { throw new Error('Aucune donnée en entrée');
+                }
+const config = input.config;
+if (!config || !config.search_params) { throw new Error('Configuration invalide: search_params manquant');
+                }
+                // Extraction des offres avec regex
+const offers = [];
+const html = input.offers_html;
+console.log('📄 Longueur HTML à analyser:', html.length);
+
+// Recherche des offres avec plusieurs patterns
+const offerItems = html.match(/<li[^>
+                ]*data-id-storage-target=\"item\"[^>]*>([\\s\\S]*?)<\\/li>/gi) ||
+                   html.match(/<div[^>
+                ]*data-id-storage-target=\"item\"[^>]*>([\\s\\S]*?)<\\/div>/gi) ||
+                   html.match(/<article[^>
+                ]*>([\\s\\S
+                ]*?)<\\/article>/gi) ||
+                   html.match(/<div[^>
+                ]*class=\"[^\"]*offer-item[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi) || [];
+
+console.log(`🔍 Nombre d'offres trouvées: ${offerItems.length
+                }`);
+
+for (let index = 0; index < offerItems.length; index++) {
+    try {
+        const itemHtml = offerItems[index
+                        ];
+        console.log(`\\n📌 Analyse offre ${index + 1
+                        }/${offerItems.length
+                        }`);
+
+        // Extraction des données avec des regex plus permissives
+        const titleMatch = itemHtml.match(/<h3[^>
+                        ]*>\\s*<p[^>
+                        ]*class=\"[^\"]*tw-typo-l[^\"]*\"[^>]*>([^<]+)<\\/p>/i) ||
+                          itemHtml.match(/<h3[^>
+                        ]*>([^<
+                        ]+)<\\/h3>/i) ||
+                          itemHtml.match(/<p[^>
+                        ]*class=\"[^\"]*tw-typo-l[^\"]*\"[^>]*>([^<]+)<\\/p>/i) ||
+                          itemHtml.match(/<a[^>
+                        ]*data-cy=\"offerTitle\"[^>]*>([^<]+)<\\/a>/i);
+
+        const companyMatch = itemHtml.match(/<p[^>
+                        ]*class=\"[^\"]*tw-typo-s[^\"]*\"[^>]*>([^<]+)<\\/p>/i) ||
+                            itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*company[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                            itemHtml.match(/<span[^>
+                        ]*class=\"[^\"]*company[^\"]*\"[^>]*>([^<]+)<\\/span>/i);
+
+        const linkMatch = itemHtml.match(/<a[^>
+                        ]*data-cy=\"offerTitle\"[^>]*href=\"([^\"]+)\"/i) ||
+                         itemHtml.match(/<a[^>
+                        ]*href=\"([^\"]+)\"[^>]*>\\s*<h3/i) ||
+                         itemHtml.match(/<a[^>
+                        ]*class=\"[^\"]*offer-link[^\"]*\"[^>]*href=\"([^\"]+)\"/i);
+
+        const locationMatch = itemHtml.match(/<div[^>
+                        ]*data-cy=\"localisationCard\"[^>]*>([^<]+)<\\/div>/i) ||
+                             itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*location[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                             itemHtml.match(/<span[^>
+                        ]*class=\"[^\"]*location[^\"]*\"[^>]*>([^<]+)<\\/span>/i);
+
+        const contractMatch = itemHtml.match(/<div[^>
+                        ]*data-cy=\"contractCard\"[^>]*>([^<]+)<\\/div>/i) ||
+                             itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*contract[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                             itemHtml.match(/<span[^>
+                        ]*class=\"[^\"]*contract[^\"]*\"[^>]*>([^<]+)<\\/span>/i);
+
+        const salaryMatch = itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*tw-typo-s-bold[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                           itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*salary[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                           itemHtml.match(/<span[^>
+                        ]*class=\"[^\"]*salary[^\"]*\"[^>]*>([^<]+)<\\/span>/i);
+
+        const dateMatch = itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*tw-typo-s tw-text-grey[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                         itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*date[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                         itemHtml.match(/<span[^>
+                        ]*class=\"[^\"]*date[^\"]*\"[^>]*>([^<]+)<\\/span>/i);
+                        // Extraction de la durée
+        let duration = null;
+        const durationMatch = itemHtml.match(/<div[^>
+                        ]*data-cy=\"contractTag\"[^>]*>([^<]+)<\\/div>/i) ||
+                             itemHtml.match(/<div[^>
+                        ]*class=\"[^\"]*duration[^\"]*\"[^>]*>([^<]+)<\\/div>/i) ||
+                             itemHtml.match(/<span[^>
+                        ]*class=\"[^\"]*duration[^\"]*\"[^>]*>([^<]+)<\\/span>/i);
+        if (durationMatch && (durationMatch[
+                            1
+                        ].includes('an') || durationMatch[
+                            1
+                        ].includes('mois'))) {
+            duration = durationMatch[
+                                1
+                            ].trim();
+                        }
+                        // Extraction de l'ID
+        const idMatch = itemHtml.match(/data-id-storage-item-id=\"([^\"]+)\"/i) ||
+                       itemMatch(/id=\"offer-([^\"]+)\"/i) ||
+                       itemMatch(/data-offer-id=\"([^\"]+)\"/i);
+
+        const offer = {
+            id: idMatch ? idMatch[
+                                1
+                            ] : `offer-${index
+                            }`,
+            title: titleMatch ? titleMatch[
+                                1
+                            ].trim() : null,
+            company: companyMatch ? companyMatch[
+                                1
+                            ].trim() : null,
+            location: locationMatch ? locationMatch[
+                                1
+                            ].trim() : null,
+            contract_type: contractMatch ? contractMatch[
+                                1
+                            ].trim() : null,
+            salary_range: salaryMatch ? salaryMatch[
+                                1
+                            ].trim() : null,
+            duration: duration,
+            posted_date: dateMatch ? dateMatch[
+                                1
+                            ].trim() : null,
+            url: linkMatch ? config.base_url + linkMatch[
+                                1
+                            ] : null,
+            source_platform: config.site_name,
+            scraped_at: new Date().toISOString(),
+            search_metadata: {
+                source_url: config.search_params.url,
+                keywords: config.search_params.keywords,
+                location_search: config.search_params.location
+                            }
+                        };
+
+        // Analyse préliminaire
+        const isAlternanceContract = ['alternance', 'apprentissage', 'professionnalisation'
+                        ].some(type =>
+            (offer.contract_type || '').toLowerCase().includes(type)
+        );
+
+        const isCyberSecurity = ['cyber', 'sécurité', 'security', 'soc', 'pentest', 'réseau', 'télécom'
+                        ].some(keyword =>
+            ((offer.title || '') + ' ' + (offer.company || '')).toLowerCase().includes(keyword)
+        );
+
+        offer.preliminary_analysis = {
+            is_alternance_contract: isAlternanceContract,
+            is_cybersecurity_domain: isCyberSecurity,
+            matches_criteria: isAlternanceContract && isCyberSecurity,
+            confidence_preliminary: (isAlternanceContract && isCyberSecurity) ? 0.8 : 0.3
+                        };
+
+        if (offer.title && offer.company) {
+            console.log(`✅ Offre extraite: ${offer.title
+                            } - ${offer.company
+                            }`);
+            offers.push(offer);
+                        } else {
+            console.log(`⚠️ Offre ignorée: données incomplètes`);
+                        }
+                    } catch (error) {
+        console.log(`❌ Erreur extraction offre ${index
+                        }:`, error.message);
+                    }
+                }
+
+console.log(`\\n📊 Résumé: ${offers.length
+                } offres valides extraites sur ${offerItems.length
+                } trouvées`);
+
+return offers.map(offer => ({ json: offer
+                }));"
+            },
+            "id": "scraper-liste-offres",
+            "name": "🕷️ Scraper Liste Offres",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -640,
+                -340
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 1
+                    },
+                    "conditions": [
+                        {
+                            "id": "has-url",
+                            "leftValue": "={{ $json.url }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "isNotEmpty"
+                            }
+                        },
+                        {
+                            "id": "valid-title",
+                            "leftValue": "={{ $json.title }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "isNotEmpty"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "filter-valid",
+            "name": "🔍 Filtrer Offres Valides",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                -1060,
+                160
+            ],
+            "alwaysOutputData": true
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $json.url }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "User-Agent",
+                            "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                        },
+                        {
+                            "name": "Accept",
+                            "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 20000
+                }
+            },
+            "id": "fetch-detail",
+            "name": "🌐 Fetch Détail Offre",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -860,
+                60
+            ],
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "const offerBase = $('🔍 Filtrer Offres Valides').item.json;
+const detailResponse = $input.item.json;
+
+console.log(`📄 === SCRAPING DÉTAIL: ${offerBase.title
+                } ===`);
+
+if (!detailResponse || detailResponse.statusCode !== 200) {
+    console.log('❌ Erreur récupération détail:', detailResponse.statusCode);
+    return [
+                        { json: { ...offerBase, detail_error: 'FETCH_ERROR'
+                            }
+                        }
+                    ];
+                }
+
+const cheerio = require('cheerio');
+const $ = cheerio.load(detailResponse.body);
+
+try {
+                    // Extraction du titre et de l'entreprise avec plusieurs patterns
+    const jobTitle = $('span[data-cy=\"jobTitle\"]').text().trim() ||
+                    $('h1#main-content > span.tw-contents').text().trim() ||
+                    $('h1.tw-typo-xl').text().trim();
+
+    const company = $('h1#main-content > span.tw-contents').text().trim() ||
+                   $('div.tw-typo-l').first().text().trim() ||
+                   $('span.company-name').text().trim();
+
+    // Extraction des missions avec plusieurs patterns
+    let missions = null;
+    $('h2, h3').each((i, h) => {
+        const text = $(h).text().toLowerCase();
+        if (text.includes('mission') || text.includes('description')) {
+            const nextP = $(h).next('p.tw-typo-long-m, p.tw-typo-m, div.tw-typo-long-m');
+            if (nextP.length) {
+                missions = nextP.text().trim();
+                                }
+                            }
+                        });
+
+    // Extraction du profil recherché
+    let profil = null;
+    $('h2, h3').each((i, h) => {
+        const text = $(h).text().toLowerCase();
+        if (text.includes('profil') || text.includes('profil recherché') || text.includes('qualification')) {
+            const nextP = $(h).next('p.tw-typo-long-m, p.tw-typo-m, div.tw-typo-long-m');
+            if (nextP.length) {
+                profil = nextP.text().trim();
+                                }
+                            }
+                        });
+
+    // Extraction des avantages
+    let avantages = null;
+    $('h2, h3').each((i, h) => {
+        const text = $(h).text().toLowerCase();
+        if (text.includes('complémentaires') || text.includes('avantage') || text.includes('bénéfice')) {
+            const nextP = $(h).next('p.tw-typo-long-m, p.tw-typo-m, div.tw-typo-long-m');
+            if (nextP.length) {
+                avantages = nextP.text().trim();
+                                }
+                            }
+                        });
+
+    // Extraction des tags
+    const resumeTags = [];
+    $('section, div.section').each((i, section) => {
+        const header = $(section).find('div.tw-typo-xl, div.tw-typo-l, h2, h3').text();
+        if (header.includes('Résumé') || header.includes('Tags')) {
+            $(section).find('li.tw-tag-secondary-s, span.tag, div.tag').each((j, tag) => {
+                resumeTags.push($(tag).text().trim());
+                                });
+                            }
+                        });
+
+    // Extraction de la date de publication
+    const datePublication = $('span.tw-block.tw-typo-xs.tw-text-grey.tw-break-words').text().trim() ||
+                          $('div.date-published').text().trim() ||
+                          $('span.publication-date').text().trim();
+
+    const enrichedOffer = {
+        ...offerBase,
+        detail_scraped: true,
+        detail: {
+            job_title_detail: jobTitle || offerBase.title,
+            company_detail: company || offerBase.company,
+            missions: missions,
+            profil_recherche: profil,
+            avantages: avantages,
+            resume_tags: resumeTags,
+            date_publication_detail: datePublication,
+            scraped_detail_at: new Date().toISOString()
+                            },
+        enriched_analysis: {
+            has_detailed_description: !!(missions || profil),
+            description_length: (missions || '').length + (profil || '').length,
+            has_advantages: !!avantages,
+            tags_count: resumeTags.length
+                            }
+                        };
+
+    console.log(`✅ Détail extrait pour: ${enrichedOffer.title
+                        }`);
+    console.log(`📋 Missions: ${missions ? 'Oui' : 'Non'
+                        }`);
+    console.log(`👤 Profil: ${profil ? 'Oui' : 'Non'
+                        }`);
+    console.log(`🎁 Avantages: ${avantages ? 'Oui' : 'Non'
+                        }`);
+
+    return [
+                            { json: enrichedOffer
+                            }
+                        ];
+                    } catch (error) {
+    console.log(`❌ Erreur extraction détail:`, error.message);
+    return [
+                            { json: { ...offerBase, detail_error: error.message
+                                }
+                            }
+                        ];
+                    }"
+                },
+                "id": "scraper-detail",
+                "name": "📄 Scraper Détail Offre",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    -660,
+                    60
+                ]
+            },
+            {
+                "parameters": {
+                    "jsCode": "// PRÉPARATION CLASSIFICATION MISTRAL AVEC DONNÉES ENRICHIES\nconst offer = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION MISTRAL: ${offer.title} ===`);\n\n// Construction du prompt avec toutes les données disponibles\nconst fullDescription = [\n  offer.title,\n  offer.detail?.missions || '',\n  offer.detail?.profil_recherche || '',\n  offer.detail?.avantages || ''\n].filter(Boolean).join('\\n\\n');\n\nconst expertPrompt = `EXPERT CLASSIFICATION ALTERNANCE CYBERSÉCURITÉ\n\n=== OFFRE COMPLÈTE À ANALYSER ===\nTITRE: ${offer.title}\nENTREPRISE: ${offer.company}\nLIEU: ${offer.location}\nTYPE CONTRAT: ${offer.contract_type}\nDURÉE: ${offer.duration || 'Non spécifiée'}\nSALAIRE: ${offer.salary_range || 'Non communiqué'}\n\n=== DESCRIPTION COMPLÈTE ===\n${fullDescription}\n\n=== TAGS RÉSUMÉ ===\n${offer.detail?.resume_tags ? offer.detail.resume_tags.join(', ') : 'Aucun'}\n\n=== CRITÈRES VALIDATION STRICTE ===\n\n1. 🎯 TYPE CONTRAT (OBLIGATOIRE):\n   ✅ VALIDE: alternance, apprentissage, contrat professionnalisation\n   ❌ INVALIDE: stage, CDI, CDD, mission, freelance\n\n2. 🛡️ DOMAINE CYBERSÉCURITÉ/RÉSEAU (OBLIGATOIRE):\n   ✅ VALIDE: cybersécurité, sécurité informatique, SOC, SIEM, pentest, audit sécurité\n   ✅ VALIDE: réseau, télécom, infrastructure, systèmes\n   ❌ INVALIDE: développement général, marketing, commercial, RH\n\n3. 📚 NIVEAU FORMATION (IMPORTANT):\n   ✅ PRÉFÉRÉ: master, bac+4, bac+5, junior, débutant, formation\n   ❌ EXCLUSION: senior 5+ ans, expert, manager\n\n4. 🎓 DURÉE APPROPRIÉE:\n   ✅ VALIDE: 1 an, 2 ans, 12-24 mois\n   ❌ INVALIDE: < 6 mois, > 3 ans\n\n=== FORMAT RÉPONSE OBLIGATOIRE ===\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [Explication précise en 1 phrase]\nCONFIANCE: [0.1 à 1.0]\n\nAnalyse cette offre maintenant.`;\n\nconst mistralPayload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert RH spécialisé dans l'analyse d'offres d'alternance en cybersécurité et réseaux/télécom. Tu appliques des critères stricts et évalues la pertinence pour un étudiant en Master cybersécurité.\"\n    },\n    {\n      role: \"user\",\n      content: expertPrompt\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 300\n};\n\nconsole.log('📋 Payload Mistral préparé');\nconsole.log('📊 Longueur description:', fullDescription.length);\n\nreturn {\n  json: {\n    ...offer,\n    mistral_request: {\n      payload_json: JSON.stringify(mistralPayload),\n      model: mistralPayload.model,\n      prompt_length: expertPrompt.length,\n      has_full_description: !!offer.detail?.missions\n    },\n    classification_prompt: expertPrompt,\n    prepared_at: new Date().toISOString()\n  }\n};"
+                },
+                "id": "prepare-mistral",
+                "name": "🎯 Préparer Mistral",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    -460,
+                    60
+                ]
+            },
+            {
+                "parameters": {
+                    "method": "POST",
+                    "url": "https://api.mistral.ai/v1/chat/completions",
+                    "sendHeaders": true,
+                    "headerParameters": {
+                        "parameters": [
+                            {
+                                "name": "Authorization",
+                                "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+                            },
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "sendBody": true,
+                    "contentType": "raw",
+                    "body": "={{ $json.mistral_request.payload_json }}",
+                    "options": {
+                        "timeout": 30000
+                    }
+                },
+                "id": "api-mistral",
+                "name": "🧠 API Mistral",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position": [
+                    -260,
+                    60
+                ],
+                "onError": "continueErrorOutput"
+            },
+            {
+                "parameters": {
+                    "jsCode": "// STOCKAGE FINAL DES OFFRES ANALYSÉES\nconst offer = $('🎯 Préparer Mistral').item.json;\nconst mistralResponse = $input.item.json;\n\nconsole.log(`💾 === STOCKAGE FINAL: ${offer.title} ===`);\n\n// Traitement de la réponse Mistral\nlet classification = 'ERREUR';\nlet justification = 'Erreur traitement';\nlet confidence = 0;\nlet isValid = false;\n\nif (mistralResponse && mistralResponse.choices && mistralResponse.choices[0]) {\n  const content = mistralResponse.choices[0].message.content;\n  \n  // Parsing de la réponse\n  const classMatch = content.match(/CLASSIFICATION:\\s*(VALIDE|INVALIDE)/i);\n  const justifMatch = content.match(/JUSTIFICATION:\\s*([^\\n]+)/i);\n  const confMatch = content.match(/CONFIANCE:\\s*([0-9.]+)/i);\n  \n  classification = classMatch ? classMatch[1].toUpperCase() : 'INCERTAIN';\n  justification = justifMatch ? justifMatch[1].trim() : 'Non trouvée';\n  confidence = confMatch ? parseFloat(confMatch[1]) : 0.5;\n  isValid = classification === 'VALIDE';\n}\n\n// Création de l'objet final complet\nconst finalOffer = {\n  // Métadonnées\n  id: offer.id,\n  scraped_at: offer.scraped_at,\n  source_platform: offer.source_platform,\n  source_url: offer.url,\n  search_metadata: offer.search_metadata,\n  \n  // Données de base\n  title: offer.title,\n  company: offer.company,\n  location: offer.location,\n  contract_type: offer.contract_type,\n  salary_range: offer.salary_range,\n  duration: offer.duration,\n  posted_date: offer.posted_date,\n  \n  // Détails enrichis\n  detail: offer.detail || {},\n  \n  // Analyse IA\n  ai_classification: {\n    classification: classification,\n    justification: justification,\n    confidence: confidence,\n    is_valid_offer: isValid,\n    mistral_model: 'mistral-large-latest',\n    classified_at: new Date().toISOString()\n  },\n  \n  // Analyses préliminaires\n  preliminary_analysis: offer.preliminary_analysis,\n  enriched_analysis: offer.enriched_analysis,\n  \n  // Score final\n  final_score: {\n    matches_criteria: isValid,\n    overall_quality: confidence,\n    has_full_details: !!offer.detail?.missions,\n    recommended: isValid && confidence > 0.7\n  }\n};\n\n// Log du résultat\nif (isValid) {\n  console.log('🎉 ✅ OFFRE VALIDÉE ET STOCKÉE');\n  console.log(`🏢 ${offer.company}`);\n  console.log(`📍 ${offer.location}`);\n  console.log(`📊 Confiance: ${confidence}`);\n} else {\n  console.log(`❌ OFFRE REJETÉE: ${justification}`);\n}\n\nreturn { json: finalOffer };"
+                },
+                "id": "store-final",
+                "name": "💾 Stocker Offre Finale",
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    -60,
+                    60
+                ]
+            },
+            {
+                "parameters": {
+                    "assignments": {
+                        "assignments": [
+                            {
+                                "id": "error-type",
+                                "name": "error_type",
+                                "value": "INVALID_OFFER",
+                                "type": "string"
+                            },
+                            {
+                                "id": "error-title",
+                                "name": "title",
+                                "value": "={{ $json.title }}",
+                                "type": "string"
+                            },
+                            {
+                                "id": "error-reason",
+                                "name": "error_reason",
+                                "value": "Offre invalide ou URL manquante",
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "options": {}
+                },
+                "id": "handle-errors",
+                "name": "❌ Gérer Erreurs",
+                "type": "n8n-nodes-base.set",
+                "typeVersion": 3.4,
+                "position": [
+                    -860,
+                    260
+                ]
+            }
+        ],
+        "pinData": {},
+        "connections": {
+            "🚀 Start": {
+                "main": [
+                    [
+                        {
+                            "node": "⚙️ Config HelloWork",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "⚙️ Config HelloWork": {
+                "main": [
+                    [
+                        {
+                            "node": "🌐 Fetch Page",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "🌐 Fetch Page": {
+                "main": [
+                    [
+                        {
+                            "node": "📦 Extraire Conteneur Offres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "❌ Gérer Erreurs",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "📦 Extraire Conteneur Offres": {
+                "main": [
+                    [
+                        {
+                            "node": "🕷️ Scraper Liste Offres",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "🕷️ Scraper Liste Offres": {
+                "main": [
+                    [
+                        {
+                            "node": "🔍 Filtrer Offres Valides",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "🔍 Filtrer Offres Valides": {
+                "main": [
+                    [
+                        {
+                            "node": "🌐 Fetch Détail Offre",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "❌ Gérer Erreurs",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "🌐 Fetch Détail Offre": {
+                "main": [
+                    [
+                        {
+                            "node": "📄 Scraper Détail Offre",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "📄 Scraper Détail Offre": {
+                "main": [
+                    [
+                        {
+                            "node": "🎯 Préparer Mistral",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "🎯 Préparer Mistral": {
+                "main": [
+                    [
+                        {
+                            "node": "🧠 API Mistral",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "🧠 API Mistral": {
+                "main": [
+                    [
+                        {
+                            "node": "💾 Stocker Offre Finale",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "active": false,
+        "settings": {
+            "executionOrder": "v1"
+        },
+        "versionId": "scraper-complet-v1",
+        "meta": {
+            "instanceId": "hellowork-scraper-complet"
+        },
+        "id": "HelloWorkScraperComplet",
+        "tags": [
+            "scraping",
+            "hellowork",
+            "cybersecurite",
+            "alternance"
+        ]
+    }

@@ -1,0 +1,142 @@
+{
+  "name": "api_mistral",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "cdccb386-f2f6-4139-8176-97420914f666",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        -360,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PAYLOAD SIMPLE ET EXPLICITE\nconst payload = {\n  \"model\": \"mistral-large-latest\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Dis-moi si cette offre est valide pour alternance cybersécurité: Contrat apprentissage - Analyste Cybersécurité SOC chez Orange. Réponds par CLASSIFICATION: VALIDE ou INVALIDE.\"\n    }\n  ],\n  \"max_tokens\": 100\n};\n\nconsole.log('📋 Payload créé:', JSON.stringify(payload, null, 2));\n\nreturn {\n  json: {\n    payload_string: JSON.stringify(payload),\n    test_id: 'simple-test-' + Date.now()\n  }\n};"
+      },
+      "id": "ad333424-46f2-4314-b6b4-79da08591ffd",
+      "name": "📋 Créer Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.payload_string }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c7e30837-f4dd-4ba4-b624-2279b25ee66d",
+      "name": "🌐 Appel Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// SUCCÈS - ANALYSE SIMPLE\nconst apiResponse = $input.item.json;\n\nconsole.log('✅ API Mistral - SUCCÈS');\nconsole.log('📝 Réponse complète:', JSON.stringify(apiResponse, null, 2));\n\nif (apiResponse.choices && apiResponse.choices[0] && apiResponse.choices[0].message) {\n  const content = apiResponse.choices[0].message.content;\n  console.log('💬 Contenu:', content);\n  \n  // Classification simple\n  let result = 'INDÉTERMINÉ';\n  if (/CLASSIFICATION:\\s*VALIDE/i.test(content)) {\n    result = 'VALIDE';\n  } else if (/CLASSIFICATION:\\s*INVALIDE/i.test(content)) {\n    result = 'INVALIDE';\n  }\n  \n  console.log('🎯 Classification détectée:', result);\n  \n  return {\n    json: {\n      status: 'SUCCESS',\n      classification: result,\n      mistral_response: content,\n      model: apiResponse.model,\n      usage: apiResponse.usage\n    }\n  };\n} else {\n  return {\n    json: {\n      status: 'SUCCESS_BUT_NO_CONTENT',\n      raw_response: apiResponse\n    }\n  };\n}"
+      },
+      "id": "aad4f751-5353-4e1f-9933-9e83dbf8d7a9",
+      "name": "✅ Traitement Succès",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ERREUR - ANALYSE DÉTAILLÉE\nconst errorData = $input.item;\n\nconsole.log('❌ API Mistral - ERREUR');\nconsole.log('🔍 Erreur complète:', JSON.stringify(errorData, null, 2));\n\n// Analyser l'erreur spécifiquement\nlet errorType = 'UNKNOWN';\nlet suggestion = 'Vérifier manuellement';\n\nif (errorData.httpCode === 422) {\n  errorType = 'VALIDATION_ERROR';\n  if (errorData.message && errorData.message.includes('messages')) {\n    suggestion = 'Champ messages manquant dans le payload';\n  }\n} else if (errorData.httpCode === 401) {\n  errorType = 'AUTH_ERROR';\n  suggestion = 'Clé API invalide ou expirée';\n} else if (errorData.httpCode === 429) {\n  errorType = 'RATE_LIMIT';\n  suggestion = 'Trop de requêtes, attendre et réessayer';\n}\n\nconsole.log('🏷️ Type d\\'erreur:', errorType);\nconsole.log('💡 Suggestion:', suggestion);\n\nreturn {\n  json: {\n    status: 'ERROR',\n    error_type: errorType,\n    error_code: errorData.httpCode,\n    error_message: errorData.message,\n    suggestion: suggestion,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "d3661b8c-9d9b-455d-9dd6-b9f3851ec9e8",
+      "name": "❌ Traitement Erreur",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        240
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "📋 Créer Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Créer Payload": {
+      "main": [
+        [
+          {
+            "node": "🌐 Appel Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Appel Mistral": {
+      "main": [
+        [
+          {
+            "node": "✅ Traitement Succès",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Traitement Erreur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7cc8d9c0-5a2a-4ac6-8d6b-d20c3693e5df",
+  "meta": {
+    "instanceId": "77649bb8ece500ac0c757974f51e9cabb1d2bb2ab3e605617a5d419377d2a6a4"
+  },
+  "id": "g99CUpIecsGoJw0N",
+  "tags": []
+}
