@@ -1,5 +1,5 @@
 {
-  "name": "My workflow 9",
+  "name": "recherche_hello_work",
   "nodes": [
     {
       "parameters": {},
@@ -27,7 +27,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// SCRAPER HELLOWORK - SIMULATION D'OFFRES ENRICHIES POUR CHAQUE CONFIGURATION\nconst config = $input.item.json;\n\n// Exemple d'offres simulées pour chaque configuration (à adapter selon le scraping réel)\nconst mockOffers = [\n  {\n    id: `offer-${config.search_params.location.replace(/\\\\s+/g, '-').toLowerCase()}-1`,\n    title: `Alternance - Analyste Cybersécurité SOC L1/L2 (${config.search_params.location})`,\n    company: 'Orange Cyberdéfense',\n    location: config.search_params.location,\n    contract_type: 'Contrat d\\'apprentissage',\n    duration: '24 mois',\n    salary_range: '1200-1500€/mois',\n    start_date: '2025-09-01',\n    description: 'Rejoignez notre équipe SOC en alternance ! Formation Master cybersécurité. Missions : surveillance 24/7, analyse incidents sécurité, utilisation SIEM (Splunk, QRadar). Encadrement par experts cybersécurité.',\n    requirements: ['Master 1/2 cybersécurité', 'Bases réseaux/systèmes', 'Motivation sécurité', 'Anglais technique'],\n    benefits: ['Formation certifiante', 'Encadrement expert', 'Possibilité CDI'],\n    posted_date: '2025-06-10',\n    expires_date: '2025-07-10',\n    reference: 'ORANGE-CYBER-ALT-2025',\n    url: config.search_params.url,\n    source_platform: config.site_name\n  }\n  // Tu peux ajouter d'autres offres simulées ici si besoin\n];\n\n// Enrichissement avec métadonnées scraping et analyse préliminaire\nconst enrichedOffers = mockOffers.map((offer, index) => {\n  const isAlternanceContract = ['apprentissage', 'alternance', 'professionnalisation']\n    .some(type => offer.contract_type.toLowerCase().includes(type));\n  const isCyberSecurity = ['cyber', 'sécurité', 'security', 'soc', 'pentest']\n    .some(keyword => (offer.title + ' ' + offer.description).toLowerCase().includes(keyword));\n  const expectedClassification = (isAlternanceContract && isCyberSecurity) ? 'VALIDE' : 'INVALIDE';\n\n  return {\n    ...offer,\n    scraped_at: new Date().toISOString(),\n    scraping_metadata: {\n      source: config.site_name,\n      search_url: config.search_params.url,\n      extraction_method: 'simulation_realistic',\n      offer_index: index\n    },\n    preliminary_analysis: {\n      is_alternance_contract: isAlternanceContract,\n      is_cybersecurity_domain: isCyberSecurity,\n      expected_mistral_classification: expectedClassification,\n      confidence_preliminary: (isAlternanceContract && isCyberSecurity) ? 0.9 : 0.8\n    },\n    ready_for_mistral: true\n  };\n});\n\nreturn enrichedOffers.map(offer => ({ json: offer }));"
+        "jsCode": "const config = $input.item.json;\n\n// On simule une offre par config pour la démonstration\nconst offer = {\n  id: `offer-${config.search_params.location.replace(/\\\\s+/g, '-').toLowerCase()}-${config.search_params.keywords.join('-')}`,\n  title: `Alternance - ${config.search_params.keywords[0]} (${config.search_params.location})`,\n  company: 'Entreprise Exemple',\n  location: config.search_params.location,\n  contract_type: 'Contrat d\\'apprentissage',\n  duration: '12 à 24 mois',\n  salary_range: '1200-1800€/mois',\n  start_date: '2025-09-01',\n  description: `Poste en alternance dans le domaine ${config.search_params.keywords[0]}. Missions variées.`,\n  requirements: ['Motivation', 'Bases techniques'],\n  benefits: ['Formation', 'Encadrement'],\n  posted_date: '2025-06-10',\n  expires_date: '2025-07-10',\n  reference: 'EXEMPLE-ALT-2025',\n  url: config.search_params.url,\n  source_platform: config.site_name\n};\n\n// Détection plus large du domaine\nconst all_keywords = ['cyber', 'sécurité', 'security', 'soc', 'pentest', 'reseau', 'télécom', 'telecom'];\nconst alternance_keywords = ['alternance', 'apprentissage', 'professionnalisation'];\n\nconst isAlternanceContract = alternance_keywords\n  .some(type => offer.contract_type.toLowerCase().includes(type) || offer.title.toLowerCase().includes(type));\nconst isCyberOrNetwork = all_keywords\n  .some(keyword => (offer.title + ' ' + offer.description).toLowerCase().includes(keyword));\n\n// On considère comme valide si c'est une alternance ET un domaine cyber/réseau/télécom\nconst expectedClassification = (isAlternanceContract && isCyberOrNetwork) ? 'VALIDE' : 'INVALIDE';\n\nconst enrichedOffer = {\n  ...offer,\n  scraped_at: new Date().toISOString(),\n  scraping_metadata: {\n    source: config.site_name,\n    search_url: config.search_params.url,\n    extraction_method: 'simulation_realistic'\n  },\n  preliminary_analysis: {\n    is_alternance_contract: isAlternanceContract,\n    is_cybersecurity_domain: isCyberOrNetwork,\n    expected_mistral_classification: expectedClassification,\n    confidence_preliminary: (isAlternanceContract && isCyberOrNetwork) ? 0.9 : 0.7\n  },\n  ready_for_mistral: true\n};\n\nreturn [{ json: enrichedOffer }];"
       },
       "id": "0bedb25e-5f80-4deb-91f1-8b5232350bb7",
       "name": "🕷️ Scraper HelloWork",
@@ -47,7 +47,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1260,
+        -1300,
         160
       ]
     },
@@ -402,7 +402,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "482a7ea0-c1a5-4355-83d8-c95c472bbfa2",
+  "versionId": "6362c7ed-062a-4426-8ab5-7d8fe3cadef1",
   "meta": {
     "instanceId": "77649bb8ece500ac0c757974f51e9cabb1d2bb2ab3e605617a5d419377d2a6a4"
   },
