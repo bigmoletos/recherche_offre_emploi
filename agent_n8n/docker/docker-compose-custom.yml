@@ -8,7 +8,7 @@ services:
     container_name: n8n_alternance_agent_custom
     restart: unless-stopped
     ports:
-      - "5678:5678"
+      - "8080:5678"
     environment:
       # Configuration de base
       - NODE_ENV=production
@@ -24,7 +24,7 @@ services:
       - N8N_USER_MANAGEMENT_DISABLED=false
 
       # Personnalisation
-      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - N8N_EDITOR_BASE_URL=http://localhost:8080
       - N8N_PROTOCOL=http
       - N8N_HOST=localhost
       - N8N_PORT=5678
@@ -50,7 +50,7 @@ services:
       - MISTRAL_API_KEY_CURSOR_MCP_SERVER=${MISTRAL_API_KEY_CURSOR_MCP_SERVER}
 
       # === AUTO-CONFIGURATION ===
-      - N8N_URL=http://localhost:5678
+      - N8N_URL=http://localhost:8080
       - ENABLE_AUTO_CONFIG=${ENABLE_AUTO_CONFIG:-true}
 
     volumes:
