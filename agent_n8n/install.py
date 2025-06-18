@@ -15,6 +15,7 @@ import subprocess
 import argparse
 import time
 from pathlib import Path
+from cursor_optimization import initialize_project
 
 def run_command(cmd, cwd=None, check=True, timeout=300):
     """Exécuter une commande et afficher la sortie"""

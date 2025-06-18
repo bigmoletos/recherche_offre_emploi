@@ -15,6 +15,7 @@ import sys
 import os
 import subprocess
 from pathlib import Path
+from cursor_optimization import initialize_project
 
 def main():
     """Lance l'API avec l'environnement virtuel approprié."""
