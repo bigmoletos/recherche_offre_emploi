@@ -1,0 +1,353 @@
+{
+  "name": "Enrichissement Partenaires IA Move2Digital",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "fb7441cd-6ca0-4a9e-b1fb-0db3c5f9d855",
+      "name": "Webhook Déclencheur",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        200
+      ],
+      "webhookId": "move2digital-enrichment",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $json.input_file || '/data/partenaires_ia_move2digital.json' }}",
+        "options": {}
+      },
+      "id": "b9afb0c8-7580-4853-895d-7bb6154c1f64",
+      "name": "Lecture JSON Move2Digital",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Parsing et préparation des données JSON Move2Digital\nconst jsonData = JSON.parse($input.first().json.data);\nconst companies = jsonData.companies || [];\n\nlogger.info(`Traitement de ${companies.length} entreprises Move2Digital`);\n\n// Traitement par lot pour éviter la surcharge API\nconst batchSize = 3;\nconst results = [];\n\nfor (let i = 0; i < companies.length; i += batchSize) {\n  const batch = companies.slice(i, i + batchSize);\n\n  for (const [batchIndex, company] of batch.entries()) {\n    // Préparation des données pour enrichissement intelligent\n    const enrichmentData = {\n      id: `company_${i + batchIndex}_${Date.now()}`,\n      original_name: company.name,\n      description: company.description,\n      sector: company.sector,\n      category: company.category,\n      technologies: company.technologies || [],\n      services: company.services || [],\n\n      // Données à enrichir (initialement vides)\n      enrichment_status: 'pending',\n      address: '',\n      ceo_name: '',\n      employee_count: '',\n      email: '',\n      phone: '',\n      linkedin_profile: '',\n      website: '',\n      siret: '',\n\n      // Requêtes de recherche optimisées\n      search_queries: [\n        `\"${company.name}\" entreprise France contact`,\n        `\"${company.name}\" dirigeant CEO email`,\n        `\"${company.name}\" adresse téléphone`,\n        `\"${company.name}\" site web officiel`,\n        `\"${company.name}\" intelligence artificielle IA`\n      ],\n\n      // Mots-clés pour validation\n      validation_keywords: [\n        company.name.toLowerCase(),\n        ...company.technologies.map(t => t.toLowerCase()),\n        ...company.services.map(s => s.toLowerCase())\n      ],\n\n      // Métadonnées de traitement\n      enrichment_start: new Date().toISOString(),\n      batch_number: Math.floor(i / batchSize) + 1,\n      processing_priority: company.technologies.includes('Machine Learning') ? 'high' : 'normal'\n    };\n\n    results.push(enrichmentData);\n  }\n}\n\nlogger.info(`Préparation terminée: ${results.length} entreprises à enrichir`);\nreturn results.map(item => ({ json: item }));\n"
+      },
+      "id": "7f90e1fa-7b72-4bc8-803f-a692fd7fe918",
+      "name": "Préparation Enrichissement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.google.com/search",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.search_queries[0] }}"
+            },
+            {
+              "name": "num",
+              "value": "15"
+            },
+            {
+              "name": "hl",
+              "value": "fr"
+            },
+            {
+              "name": "gl",
+              "value": "fr"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 3
+          }
+        }
+      },
+      "id": "32c784d2-179a-4a4f-a8ef-f5721a956e81",
+      "name": "Recherche Google Enrichie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        800,
+        200
+      ],
+      "continueOnFail": true,
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Extraction intelligente d'informations depuis les résultats Google\nconst companyData = $input.first().json;\nconst searchResults = $input.last().json;\n\n// Patterns d'extraction avancés pour chaque type d'information\nconst patterns = {\n  email: [\n    /\\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\\b/g,\n    /contact@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g,\n    /info@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g,\n    /hello@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g\n  ],\n\n  phone: [\n    /(?:\\+33|0)[1-9](?:[\\s.-]?\\d{2}){4}/g,\n    /\\+33\\s?[1-9](?:\\s?\\d{2}){4}/g,\n    /0[1-9](?:[\\s.-]?\\d{2}){4}/g\n  ],\n\n  website: [\n    /https?:\\/\\/[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(?:\\/[^\\s]*)?/g,\n    /www\\.[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(?:\\/[^\\s]*)?/g\n  ],\n\n  address: [\n    /\\d+[^\\n]*(?:rue|avenue|boulevard|place|chemin|allée)[^\\n]*\\d{5}[^\\n]*/gi,\n    /\\d{5}\\s+[A-Z][a-z]+(?:-[A-Z][a-z]+)*/g\n  ],\n\n  ceo: [\n    /(?:PDG|CEO|Président|Directeur général|Fondateur)[^\\n]*:?\\s*([A-Z][a-z]+\\s+[A-Z][a-z]+)/gi,\n    /M\\.?\\s+([A-Z][a-z]+\\s+[A-Z][a-z]+)\\s*(?:PDG|CEO|Président)/gi\n  ],\n\n  employees: [\n    /(\\d+)\\s*(?:employés?|salariés?|collaborateurs?)/gi,\n    /effectif[^\\d]*(\\d+)/gi,\n    /(\\d+)\\s*personnes?/gi\n  ]\n};\n\n// Fonction d'extraction avec validation contextuelle\nfunction extractInfo(text, patternArray, companyName) {\n  if (!text || typeof text !== 'string') return [];\n\n  const results = [];\n  for (const pattern of patternArray) {\n    const matches = text.match(pattern);\n    if (matches) {\n      // Filtrer les résultats pertinents pour l'entreprise\n      const filtered = matches.filter(match => {\n        const context = text.substr(text.indexOf(match) - 100, 200);\n        return context.toLowerCase().includes(companyName.toLowerCase().split(' ')[0]);\n      });\n      results.push(...filtered);\n    }\n  }\n  return [...new Set(results)]; // Supprime les doublons\n}\n\n// Préparation du contenu pour extraction\nconst htmlContent = searchResults.data || searchResults.body || '';\nconst textContent = htmlContent.replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ');\n\n// Extraction avec validation contextuelle\nconst extractedData = {\n  emails: extractInfo(textContent, patterns.email, companyData.original_name),\n  phones: extractInfo(textContent, patterns.phone, companyData.original_name),\n  websites: extractInfo(textContent, patterns.website, companyData.original_name),\n  addresses: extractInfo(textContent, patterns.address, companyData.original_name),\n  ceo_candidates: extractInfo(textContent, patterns.ceo, companyData.original_name),\n  employee_counts: extractInfo(textContent, patterns.employees, companyData.original_name)\n};\n\n// Sélection intelligente des meilleures candidates\nconst result = {\n  ...companyData,\n\n  // Email prioritaire (domaine de l'entreprise > contact générique)\n  email: extractedData.emails.find(email => {\n    const domain = email.split('@')[1];\n    return domain && companyData.original_name.toLowerCase().includes(domain.split('.')[0]);\n  }) || extractedData.emails[0] || '',\n\n  // Téléphone français validé\n  phone: extractedData.phones.find(phone =>\n    phone.match(/^(?:\\+33|0)[1-9](?:[\\s.-]?\\d{2}){4}$/)\n  ) || '',\n\n  // Site web principal (éviter réseaux sociaux)\n  website: extractedData.websites.find(site =>\n    !site.includes('linkedin') &&\n    !site.includes('facebook') &&\n    !site.includes('twitter') &&\n    site.includes('.')\n  ) || '',\n\n  // Adresse française complète\n  address: extractedData.addresses.find(addr => addr.match(/\\d{5}/)) || '',\n\n  // Dirigeant identifié\n  ceo_name: extractedData.ceo_candidates[0] || '',\n\n  // Effectif numérique\n  employee_count: extractedData.employee_counts.length > 0 ?\n    Math.max(...extractedData.employee_counts.map(n => parseInt(n.match(/\\d+/)[0]))) : '',\n\n  // Données brutes pour audit\n  raw_extracted_data: extractedData,\n\n  // Mise à jour du statut\n  enrichment_status: 'google_completed',\n  google_enrichment_time: new Date().toISOString(),\n\n  // Score de confiance basé sur la quantité d'informations trouvées\n  confidence_score: Object.values(extractedData).flat().length\n};\n\nlogger.info(`Enrichissement Google terminé pour: ${companyData.original_name}`);\nlogger.info(`Score de confiance: ${result.confidence_score}`);\n\nreturn [{ json: result }];\n"
+      },
+      "id": "b8b33ec2-47b2-4ceb-9b87-982a886819ed",
+      "name": "Extraction Intelligente Google",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "40c69ff6-62c9-4655-b46a-87d8090f8e3e",
+      "name": "Délai Anti-Rate-Limit",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        400
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.google.com/search",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=site:linkedin.com/company {{ $json.original_name }} intelligence artificielle"
+            },
+            {
+              "name": "num",
+              "value": "5"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 2
+          }
+        }
+      },
+      "id": "7be910a9-2789-4206-bcea-39880302fae5",
+      "name": "Recherche LinkedIn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        300
+      ],
+      "continueOnFail": true,
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Consolidation finale avec scoring et validation\nconst companyData = $input.first().json;\n\n// Validation et nettoyage des données\nfunction validateAndClean(data) {\n  return {\n    ...data,\n\n    // Nettoyage email\n    email: data.email && data.email.includes('@') ? data.email.trim().toLowerCase() : '',\n\n    // Nettoyage téléphone\n    phone: data.phone ? data.phone.replace(/[^\\d+]/g, '').substring(0, 15) : '',\n\n    // Nettoyage site web\n    website: data.website ? (data.website.startsWith('http') ? data.website : `https://${data.website}`) : '',\n\n    // Nettoyage adresse\n    address: data.address ? data.address.trim().replace(/\\s+/g, ' ') : '',\n\n    // Nettoyage nom dirigeant\n    ceo_name: data.ceo_name ? data.ceo_name.trim().replace(/^[^a-zA-Z]+/, '') : '',\n\n    // Validation effectif\n    employee_count: data.employee_count && !isNaN(data.employee_count) ?\n      parseInt(data.employee_count) : null\n  };\n}\n\n// Application du nettoyage\nconst cleanedData = validateAndClean(companyData);\n\n// Calcul du score de complétude (sur 10)\nconst completenessFields = [\n  cleanedData.email,\n  cleanedData.phone,\n  cleanedData.website,\n  cleanedData.address,\n  cleanedData.ceo_name,\n  cleanedData.employee_count,\n  cleanedData.linkedin_profile\n];\n\nconst completenessScore = completenessFields.filter(field =>\n  field && field !== '' && field !== null\n).length;\n\n// Résultat final enrichi\nconst finalResult = {\n  ...cleanedData,\n\n  // Scores et métriques\n  completeness_score: completenessScore,\n  confidence_score: cleanedData.confidence_score || 0,\n  quality_grade: completenessScore >= 5 ? 'A' : completenessScore >= 3 ? 'B' : 'C',\n\n  // Statut final\n  enrichment_status: 'completed',\n  enrichment_completed_time: new Date().toISOString(),\n\n  // Durée de traitement\n  processing_duration: cleanedData.enrichment_start ?\n    new Date() - new Date(cleanedData.enrichment_start) : null,\n\n  // Sources utilisées\n  enrichment_sources: {\n    google_search: !!cleanedData.raw_extracted_data,\n    linkedin_search: !!cleanedData.linkedin_profile,\n    confidence_level: cleanedData.confidence_score > 5 ? 'high' : 'medium'\n  }\n};\n\nlogger.info(`Consolidation finale pour: ${finalResult.original_name}`);\nlogger.info(`Score de complétude: ${completenessScore}/7 (${finalResult.quality_grade})`);\n\nreturn [{ json: finalResult }];\n"
+      },
+      "id": "1f7af04a-5c12-4400-bf7d-08eba76164fd",
+      "name": "Consolidation Finale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Génération du rapport final d'enrichissement\nconst allCompanies = $input.all();\n\n// Statistiques globales\nconst stats = {\n  total_companies: allCompanies.length,\n  successfully_enriched: allCompanies.filter(item =>\n    item.json.enrichment_status === 'completed'\n  ).length,\n\n  high_quality: allCompanies.filter(item =>\n    item.json.quality_grade === 'A'\n  ).length,\n\n  average_completeness: allCompanies.reduce((sum, item) =>\n    sum + (item.json.completeness_score || 0), 0\n  ) / allCompanies.length,\n\n  // Détail par champ\n  fields_coverage: {\n    with_email: allCompanies.filter(item => item.json.email).length,\n    with_phone: allCompanies.filter(item => item.json.phone).length,\n    with_website: allCompanies.filter(item => item.json.website).length,\n    with_address: allCompanies.filter(item => item.json.address).length,\n    with_ceo: allCompanies.filter(item => item.json.ceo_name).length,\n    with_employees: allCompanies.filter(item => item.json.employee_count).length,\n    with_linkedin: allCompanies.filter(item => item.json.linkedin_profile).length\n  }\n};\n\n// Structure finale pour export\nconst enrichedData = {\n  metadata: {\n    enrichment_date: new Date().toISOString(),\n    workflow_version: '1.0',\n    source: 'Move2Digital + Enrichissement Multi-sources',\n    processing_statistics: stats,\n    data_quality: {\n      average_grade: stats.high_quality / stats.total_companies > 0.5 ? 'A' : 'B',\n      completeness_percentage: (stats.average_completeness / 7 * 100).toFixed(1)\n    }\n  },\n\n  companies: allCompanies.map(item => ({\n    // Données originales Move2Digital\n    name: item.json.original_name,\n    description: item.json.description,\n    category: item.json.category,\n    sector: item.json.sector,\n    technologies: item.json.technologies,\n    services: item.json.services,\n\n    // Données enrichies\n    contact_info: {\n      email: item.json.email || null,\n      phone: item.json.phone || null,\n      website: item.json.website || null,\n      linkedin_profile: item.json.linkedin_profile || null\n    },\n\n    company_details: {\n      address: item.json.address || null,\n      ceo_name: item.json.ceo_name || null,\n      employee_count: item.json.employee_count || null\n    },\n\n    // Méta-données qualité\n    data_quality: {\n      completeness_score: item.json.completeness_score,\n      confidence_score: item.json.confidence_score,\n      quality_grade: item.json.quality_grade,\n      enrichment_sources: item.json.enrichment_sources\n    }\n  }))\n};\n\nlogger.info(`Rapport final généré:`);\nlogger.info(`- ${stats.total_companies} entreprises traitées`);\nlogger.info(`- ${stats.successfully_enriched} enrichissements réussis`);\nlogger.info(`- ${stats.high_quality} fiches de qualité A`);\nlogger.info(`- Complétude moyenne: ${stats.average_completeness.toFixed(1)}/7`);\n\nreturn [{ json: enrichedData }];\n"
+      },
+      "id": "b09ebbcb-f2b5-4f46-9d34-277f965ecb35",
+      "name": "Génération Rapport Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        200
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "fileName": "partenaires_ia_move2digital_enrichis_{{ $now.format('yyyy-MM-dd_HH-mm') }}.json",
+        "filePath": "/data/outputs/"
+      },
+      "id": "8aed12ee-623a-4d76-9d10-eb8ee0cb397b",
+      "name": "Export Fichier Enrichi",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        200
+      ],
+      "credentials": {}
+    }
+  ],
+  "connections": {
+    "Webhook Déclencheur": {
+      "main": [
+        [
+          {
+            "node": "Lecture JSON Move2Digital",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lecture JSON Move2Digital": {
+      "main": [
+        [
+          {
+            "node": "Préparation Enrichissement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation Enrichissement": {
+      "main": [
+        [
+          {
+            "node": "Recherche Google Enrichie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recherche Google Enrichie": {
+      "main": [
+        [
+          {
+            "node": "Extraction Intelligente Google",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraction Intelligente Google": {
+      "main": [
+        [
+          {
+            "node": "Délai Anti-Rate-Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Délai Anti-Rate-Limit": {
+      "main": [
+        [
+          {
+            "node": "Recherche LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recherche LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Consolidation Finale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidation Finale": {
+      "main": [
+        [
+          {
+            "node": "Génération Rapport Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Génération Rapport Final": {
+      "main": [
+        [
+          {
+            "node": "Export Fichier Enrichi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": {},
+  "tags": [
+    {
+      "createdAt": "2025-06-20T15:37:56.997667",
+      "updatedAt": "2025-06-20T15:37:56.997667",
+      "id": "enrichment",
+      "name": "enrichment"
+    },
+    {
+      "createdAt": "2025-06-20T15:37:56.997667",
+      "updatedAt": "2025-06-20T15:37:56.997667",
+      "id": "move2digital",
+      "name": "move2digital"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-06-20T15:37:56.997667",
+  "versionId": "1.0"
+}
