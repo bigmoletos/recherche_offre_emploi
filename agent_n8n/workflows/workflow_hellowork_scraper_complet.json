@@ -72,7 +72,7 @@
         },
         {
             "parameters": {
-                "jsCode": "// EXTRACTION OPTIMISÉE DU CONTENEUR DES OFFRES\nconst logger = {\n  info: (msg, data = {}) => console.log(`ℹ️ [${new Date().toISOString()}] ${msg}`, JSON.stringify(data)),\n  error: (msg, error = {}) => console.error(`❌ [${new Date().toISOString()}] ${msg}`, JSON.stringify(error))\n};\n\ntry {\n  // Récupération directe de la réponse HTTP du nœud Fetch Page\n  const httpResponse = $input.item.json;\n  \n  // Récupération de la config depuis le nœud précédent (Config HelloWork)\n  const config = $('⚙️ Config HelloWork').item.json;\n  \n  if (!config || !config.search_params) {\n    logger.error('Config manquante', { \n      hasConfig: !!config,\n      configKeys: config ? Object.keys(config) : 'null'\n    });\n    throw new Error('Configuration invalide: search_params manquant');\n  }\n  \n  logger.info('Configuration récupérée', {\n    site: config.site_name,\n    url: config.search_params.url\n  });\n  \n  const statusCode = httpResponse.statusCode || httpResponse.status;\n  if (statusCode && statusCode !== 200) {\n    throw new Error(`Erreur HTTP ${statusCode}`);\n  }\n  \n  const htmlBody = httpResponse.body || httpResponse.data;\n  if (!htmlBody) {\n    throw new Error('Body HTML manquant dans la réponse');\n  }\n  \n  const html = htmlBody.toString();\n  logger.info('HTML récupéré', { length: html.length });\n  \n  const selectors = [\n    /<div[^>]*data-id-storage-target=\"list\"[^>]*>([\\s\\S]*?)<\\/div>/i,\n    /<div[^>]*class=\"[^\"]*job-list[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<div[^>]*class=\"[^\"]*offers[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<main[^>]*>([\\s\\S]*?)<\\/main>/i,\n    /<section[^>]*class=\"[^\"]*results[^\"]*\"[^>]*>([\\s\\S]*?)<\\/section>/gi\n  ];\n  \n  let offersHtml = null;\n  let selectorUsed = -1;\n  for (let i = 0; i < selectors.length; i++) {\n    const match = html.match(selectors[i]);\n    if (match && match[0]) {\n      offersHtml = match[0];\n      selectorUsed = i;\n      break;\n    }\n  }\n  \n  if (!offersHtml) {\n    logger.error('Conteneur des offres non trouvé', {\n      htmlPreview: html.substring(0, 500),\n      url: config.search_params.url\n    });\n    throw new Error('Conteneur des offres non trouvé dans le HTML');\n  }\n  \n  logger.info('Conteneur extrait', {\n    selector: selectorUsed,\n    length: offersHtml.length\n  });\n  \n  return [{\n    json: {\n      offers_html: offersHtml,\n      config: config,\n      extraction_metadata: {\n        status: 'success',\n        selector_used: selectorUsed,\n        html_length: offersHtml.length,\n        extracted_at: new Date().toISOString()\n      }\n    }\n  }];\n  \n} catch (error) {\n  logger.error('Erreur extraction', { error: error.message });\n  throw error;\n}"
+                "jsCode": "// EXTRACTION OPTIMISÉE DU CONTENEUR DES OFFRES - VERSION SPLIT COMPATIBLE\nconst logger = {\n  info: (msg, data = {}) => console.log(`ℹ️ [${new Date().toISOString()}] ${msg}`, JSON.stringify(data)),\n  error: (msg, error = {}) => console.error(`❌ [${new Date().toISOString()}] ${msg}`, JSON.stringify(error))\n};\n\ntry {\n  // Récupération directe de la réponse HTTP du nœud Fetch Page\n  const httpResponse = $input.item.json;\n  \n  // NOUVELLE MÉTHODE: Récupération de la config depuis le nœud Split Configs  \n  // Maintenant que nous avons un split, chaque exécution a sa propre config\n  const config = $('📋 Split Configs').item.json;\n  \n  console.log('🔍 Traitement de la config:', {\n    site: config?.site_name,\n    location: config?.search_params?.location,\n    keywords: config?.search_params?.keywords,\n    url: config?.search_params?.url\n  });\n  \n  if (!config || !config.search_params) {\n    logger.error('Config manquante depuis Split Configs', {\n      hasConfig: !!config,\n      configKeys: config ? Object.keys(config) : 'null'\n    });\n    throw new Error('Configuration invalide: search_params manquant depuis Split Configs');\n  }\n  \n  logger.info('Configuration récupérée avec succès depuis Split', {\n    site: config.site_name,\n    url: config.search_params.url,\n    keywords: config.search_params.keywords,\n    location: config.search_params.location\n  });\n  \n  const statusCode = httpResponse.statusCode || httpResponse.status;\n  if (statusCode && statusCode !== 200) {\n    throw new Error(`Erreur HTTP ${statusCode} pour ${config.search_params.url}`);\n  }\n  \n  const htmlBody = httpResponse.body || httpResponse.data;\n  if (!htmlBody) {\n    throw new Error('Body HTML manquant dans la réponse');\n  }\n  \n  const html = htmlBody.toString();\n  logger.info('HTML récupéré', {\n    length: html.length,\n    search_location: config.search_params.location,\n    search_keywords: config.search_params.keywords\n  });\n  \n  const selectors = [\n    /<div[^>]*data-id-storage-target=\"list\"[^>]*>([\\s\\S]*?)<\\/div>/i,\n    /<div[^>]*class=\"[^\"]*job-list[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<div[^>]*class=\"[^\"]*offers[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<main[^>]*>([\\s\\S]*?)<\\/main>/i,\n    /<section[^>]*class=\"[^\"]*results[^\"]*\"[^>]*>([\\s\\S]*?)<\\/section>/gi\n  ];\n  \n  let offersHtml = null;\n  let selectorUsed = -1;\n  for (let i = 0; i < selectors.length; i++) {\n    const match = html.match(selectors[i]);\n    if (match && match[0]) {\n      offersHtml = match[0];\n      selectorUsed = i;\n      break;\n    }\n  }\n  \n  if (!offersHtml) {\n    logger.error('Conteneur des offres non trouvé', {\n      htmlPreview: html.substring(0, 500),\n      url: config.search_params.url,\n      location: config.search_params.location\n    });\n    throw new Error(`Conteneur des offres non trouvé dans le HTML pour ${config.search_params.location}`);\n  }\n  \n  logger.info('✅ Conteneur extrait avec succès', {\n    selector: selectorUsed,\n    length: offersHtml.length,\n    location: config.search_params.location,\n    keywords: config.search_params.keywords,\n    url: config.search_params.url\n  });\n  \n  return [{\n    json: {\n      offers_html: offersHtml,\n      config: config,\n      extraction_metadata: {\n        status: 'success',\n        selector_used: selectorUsed,\n        html_length: offersHtml.length,\n        search_location: config.search_params.location,\n        search_keywords: config.search_params.keywords,\n        search_url: config.search_params.url,\n        extracted_at: new Date().toISOString()\n      }\n    }\n  }];\n  \n} catch (error) {\n  logger.error('Erreur extraction', {\n    error: error.message,\n    stack: error.stack?.substring(0, 500)\n  });\n  throw error;\n}"
             },
             "id": "5761a52f-60b1-4ebe-abdf-16549ade9e8f",
             "name": "📦 Extraire Conteneur Offres",
@@ -245,6 +245,20 @@
         },
         {
             "parameters": {
+                "batchSize": 1,
+                "options": {}
+            },
+            "id": "split-configs-node",
+            "name": "📋 Split Configs",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                -300,
+                -300
+            ]
+        },
+        {
+            "parameters": {
                 "assignments": {
                     "assignments": [
                         {
@@ -293,6 +307,17 @@
             ]
         },
         "⚙️ Config HelloWork": {
+            "main": [
+                [
+                    {
+                        "node": "📋 Split Configs",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "📋 Split Configs": {
             "main": [
                 [
                     {
