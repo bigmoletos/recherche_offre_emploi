@@ -301,6 +301,210 @@
                 -400,
                 160
             ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\fin_de_boucle_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_fin_de_boucle",
+            "name": "💾 Save Fin de Boucle Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -200,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\config_hellowork_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_config_hellowork",
+            "name": "💾 Save Config HelloWork Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -1380,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\fetch_page_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_fetch_page",
+            "name": "💾 Save Fetch Page Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -1200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\extraire_conteneur_offres_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_extraire_conteneur",
+            "name": "💾 Save Extraire Conteneur Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -920,
+                260
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\scraper_liste_offres_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_scraper_liste",
+            "name": "💾 Save Scraper Liste Offres Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -620,
+                280
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\filtrer_offres_valides_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_filtrer_offres",
+            "name": "💾 Save Filtrer Offres Valides Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -680,
+                620
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\fetch_detail_offre_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_fetch_detail",
+            "name": "💾 Save Fetch Detail Offre Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -480,
+                520
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\scraper_detail_offre_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_scraper_detail",
+            "name": "💾 Save Scraper Detail Offre Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -240,
+                440
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\preparer_mistral_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_preparer_mistral",
+            "name": "💾 Save Preparer Mistral Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                100,
+                340
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\api_mistral_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_api_mistral",
+            "name": "💾 Save API Mistral Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                120,
+                520
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\stocker_offre_finale_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_stocker_finale",
+            "name": "💾 Save Stocker Offre Finale Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                340,
+                520
+            ]
+        },
+        {
+            "parameters": {
+                "filePath": "C:\\programmation\\Projets_python\\recherche_offre_emploi\\agent_n8n\\workflows\\outputs\\gerer_erreurs_output.json",
+                "data": "={{ JSON.stringify($json, null, 2) }}",
+                "options": {
+                    "encoding": "utf8"
+                }
+            },
+            "id": "save_gerer_erreurs",
+            "name": "💾 Save Gérer Erreurs Output",
+            "type": "n8n-nodes-base.writeBinaryFile",
+            "typeVersion": 1,
+            "position": [
+                -460,
+                880
+            ]
         }
     ],
     "pinData": {},
@@ -323,6 +527,11 @@
                         "node": "📋 Split Configs",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "💾 Save Config HelloWork Output",
+                        "type": "main",
+                        "index": 0
                     }
                 ]
             ]
@@ -331,7 +540,7 @@
             "main": [
                 [
                     {
-                        "node": "✅ Fin de Boucle",
+                        "node": "💾 Save Fin de Boucle Output",
                         "type": "main",
                         "index": 0
                     }
@@ -352,6 +561,11 @@
                         "node": "📦 Extraire Conteneur Offres",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "💾 Save Fetch Page Output",
+                        "type": "main",
+                        "index": 0
                     }
                 ],
                 [
@@ -370,6 +584,11 @@
                         "node": "🕷️ Scraper Liste Offres",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "💾 Save Extraire Conteneur Output",
+                        "type": "main",
+                        "index": 0
                     }
                 ]
             ]
@@ -381,6 +600,11 @@
                         "node": "🔍 Filtrer Offres Valides",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "💾 Save Scraper Liste Offres Output",
+                        "type": "main",
+                        "index": 0
                     }
                 ]
             ]
@@ -390,6 +614,11 @@
                 [
                     {
                         "node": "🌐 Fetch Détail Offre",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "💾 Save Filtrer Offres Valides Output",
                         "type": "main",
                         "index": 0
                     }
@@ -410,6 +639,11 @@
                         "node": "📄 Scraper Détail Offre",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "💾 Save Fetch Detail Offre Output",
+                        "type": "main",
+                        "index": 0
                     }
                 ],
                 [
@@ -428,6 +662,11 @@
                         "node": "🎯 Préparer Mistral",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "💾 Save Scraper Detail Offre Output",
+                        "type": "main",
+                        "index": 0
                     }
                 ]
             ]
@@ -439,6 +678,11 @@
                         "node": "🧠 API Mistral",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "💾 Save Preparer Mistral Output",
+                        "type": "main",
+                        "index": 0
                     }
                 ]
             ]
@@ -448,6 +692,33 @@
                 [
                     {
                         "node": "💾 Stocker Offre Finale",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "💾 Save API Mistral Output",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "💾 Stocker Offre Finale": {
+            "main": [
+                [
+                    {
+                        "node": "💾 Save Stocker Offre Finale Output",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "❌ Gérer Erreurs": {
+            "main": [
+                [
+                    {
+                        "node": "💾 Save Gérer Erreurs Output",
                         "type": "main",
                         "index": 0
                     }

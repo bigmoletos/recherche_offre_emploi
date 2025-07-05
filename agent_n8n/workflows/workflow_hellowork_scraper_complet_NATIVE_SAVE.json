@@ -1,0 +1,468 @@
+{
+  "name": "hellowork_triate_toutes les_offres",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "25560eb0-fb7a-4b94-9d21-ae9bb8ed8fec",
+      "name": "🚀 Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        -1740,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CONFIGURATION HELLOWORK CYBERSÉCURITÉ - MULTI-REQUÊTES AVEC LIEUX\nconsole.log('🔍 === RECHERCHE HELLOWORK CYBERSÉCURITÉ (multi-combinaisons + lieux) ===');\n\nconst site_name = 'HelloWork';\nconst base_url = 'https://www.hellowork.com';\nconst keywords_main = ['cybersécurité', 'reseau et telecom'];\nconst alternance_types = ['alternance', 'apprentissage'];\nconst contract_types = ['apprentissage', 'contrat-professionnalisation'];\nconst locations = ['Marseille', 'Paris', 'Aix-en-Provence'];\nconst experience_level = 'débutant';\n\nconst urls = [];\nconst configs = [];\n\nfor (const kw of keywords_main) {\n  for (const alt of alternance_types) {\n    for (const loc of locations) {\n      const query = encodeURIComponent(`${kw} ${alt}`);\n      const location_encoded = encodeURIComponent(loc);\n      const url = `${base_url}/fr-fr/emploi/recherche.html?k=${query}&l=${location_encoded}&c=${contract_types.join(',')}`;\n      urls.push(url);\n\n      configs.push({\n        site_name,\n        base_url,\n        search_params: {\n          url,\n          keywords: [kw, alt],\n          location: loc,\n          contract_types,\n          experience_level\n        },\n        scraping_config: {\n          timeout: 30000,\n          retry_attempts: 3,\n          user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',\n          headers: {\n            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',\n            'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',\n            'Accept-Encoding': 'gzip, deflate, br',\n            'DNT': '1',\n            'Connection': 'keep-alive',\n            'Upgrade-Insecure-Requests': '1'\n          }\n        },\n        expected_results: {\n          min_offers: 1,\n          max_offers: 20,\n          target_alternance: true,\n          target_cybersecurity: true\n        }\n      });\n    }\n  }\n}\n\nconsole.log('🎯 Site cible:', site_name);\nconsole.log('🔗 URLs générées:', urls);\nconsole.log('📋 Nombre de requêtes générées:', configs.length);\n\n// Retourne chaque configuration comme un item séparé pour n8n\nreturn configs.map(cfg => ({ json: cfg }));"
+      },
+      "id": "48825dc0-9c87-4b4f-8c27-c75cbc734a76",
+      "name": "⚙️ Config HelloWork",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1580,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.search_params.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "={{ $json.scraping_config.user_agent }}"
+            },
+            {
+              "name": "Accept",
+              "value": "={{ $json.scraping_config.headers.Accept }}"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "={{ $json.scraping_config.headers['Accept-Language'] }}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {},
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          },
+          "timeout": "={{ $json.scraping_config.timeout }}"
+        }
+      },
+      "id": "12fbce3d-6070-40a1-b39c-de71020c8499",
+      "name": "🌐 Fetch Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1400,
+        200
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// EXTRACTION OPTIMISÉE DU CONTENEUR DES OFFRES - VERSION SPLIT COMPATIBLE\nconst logger = {\n  info: (msg, data = {}) => console.log(`ℹ️ [${new Date().toISOString()}] ${msg}`, JSON.stringify(data)),\n  error: (msg, error = {}) => console.error(`❌ [${new Date().toISOString()}] ${msg}`, JSON.stringify(error))\n};\n\ntry {\n  // Récupération directe de la réponse HTTP du nœud Fetch Page\n  const httpResponse = $input.item.json;\n  \n  // NOUVELLE MÉTHODE: Récupération de la config depuis le nœud Split Configs  \n  // Maintenant que nous avons un split, chaque exécution a sa propre config\n  const config = $('📋 Split Configs').item.json;\n  \n  console.log('🔍 Traitement de la config:', {\n    site: config?.site_name,\n    location: config?.search_params?.location,\n    keywords: config?.search_params?.keywords,\n    url: config?.search_params?.url\n  });\n  \n  if (!config || !config.search_params) {\n    logger.error('Config manquante depuis Split Configs', {\n      hasConfig: !!config,\n      configKeys: config ? Object.keys(config) : 'null'\n    });\n    throw new Error('Configuration invalide: search_params manquant depuis Split Configs');\n  }\n  \n  logger.info('Configuration récupérée avec succès depuis Split', {\n    site: config.site_name,\n    url: config.search_params.url,\n    keywords: config.search_params.keywords,\n    location: config.search_params.location\n  });\n  \n  const statusCode = httpResponse.statusCode || httpResponse.status;\n  if (statusCode && statusCode !== 200) {\n    throw new Error(`Erreur HTTP ${statusCode} pour ${config.search_params.url}`);\n  }\n  \n  const htmlBody = httpResponse.body || httpResponse.data;\n  if (!htmlBody) {\n    throw new Error('Body HTML manquant dans la réponse');\n  }\n  \n  const html = htmlBody.toString();\n  logger.info('HTML récupéré', {\n    length: html.length,\n    search_location: config.search_params.location,\n    search_keywords: config.search_params.keywords\n  });\n  \n  const selectors = [\n    /<div[^>]*data-id-storage-target=\"list\"[^>]*>([\\s\\S]*?)<\\/div>/i,\n    /<div[^>]*class=\"[^\"]*job-list[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<div[^>]*class=\"[^\"]*offers[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<main[^>]*>([\\s\\S]*?)<\\/main>/i,\n    /<section[^>]*class=\"[^\"]*results[^\"]*\"[^>]*>([\\s\\S]*?)<\\/section>/gi\n  ];\n  \n  let offersHtml = null;\n  let selectorUsed = -1;\n  for (let i = 0; i < selectors.length; i++) {\n    const match = html.match(selectors[i]);\n    if (match && match[0]) {\n      offersHtml = match[0];\n      selectorUsed = i;\n      break;\n    }\n  }\n  \n  if (!offersHtml) {\n    logger.error('Conteneur des offres non trouvé', {\n      htmlPreview: html.substring(0, 500),\n      url: config.search_params.url,\n      location: config.search_params.location\n    });\n    throw new Error(`Conteneur des offres non trouvé dans le HTML pour ${config.search_params.location}`);\n  }\n  \n  logger.info('✅ Conteneur extrait avec succès', {\n    selector: selectorUsed,\n    length: offersHtml.length,\n    location: config.search_params.location,\n    keywords: config.search_params.keywords,\n    url: config.search_params.url\n  });\n  \n  return [{\n    json: {\n      offers_html: offersHtml,\n      config: config,\n      extraction_metadata: {\n        status: 'success',\n        selector_used: selectorUsed,\n        html_length: offersHtml.length,\n        search_location: config.search_params.location,\n        search_keywords: config.search_params.keywords,\n        search_url: config.search_params.url,\n        extracted_at: new Date().toISOString()\n      }\n    }\n  }];\n  \n} catch (error) {\n  logger.error('Erreur extraction', {\n    error: error.message,\n    stack: error.stack?.substring(0, 500)\n  });\n  throw error;\n}"
+      },
+      "id": "000ca1cc-aa57-40db-b008-12eac703fcb6",
+      "name": "📦 Extraire Conteneur Offres",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        160
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// SCRAPER LISTE OFFRES OPTIMISÉ AVEC DEBUG AVANCÉ\nconst logger = {\n  info: (msg, data = {}) => console.log(`ℹ️ [${new Date().toISOString()}] SCRAPER: ${msg}`, JSON.stringify(data)),\n  error: (msg, error = {}) => console.error(`❌ [${new Date().toISOString()}] SCRAPER: ${msg}`, JSON.stringify(error)),\n  debug: (msg, data = {}) => console.log(`🐛 [${new Date().toISOString()}] SCRAPER: ${msg}`, JSON.stringify(data))\n};\n\ntry {\n  const input = $input.item.json;\n  if (!input) { throw new Error('Aucune donnée en entrée'); }\n  \n  logger.debug('Structure reçue', {\n    keys: Object.keys(input),\n    hasConfig: !!input.config,\n    hasOffersHtml: !!input.offers_html\n  });\n  \n  const config = input.config;\n  if (!config || !config.search_params) {\n    logger.error('search_params manquant', { configKeys: Object.keys(config || {}) });\n    throw new Error('Configuration invalide: search_params manquant');\n  }\n  \n  const offers = [];\n  const html = input.offers_html;\n  \n  if (!html) {\n    logger.error('HTML manquant', { inputKeys: Object.keys(input) });\n    throw new Error('HTML des offres manquant');\n  }\n  \n  logger.info('HTML reçu', { length: html.length, preview: html.substring(0, 200) });\n  \n  // Essai de différents sélecteurs pour trouver les offres\n  const selectors = [\n    /<li[^>]*data-id-storage-target=\"item\"[^>]*>([\\s\\S]*?)<\\/li>/gi,\n    /<article[^>]*class=\"[^\"]*offer[^\"]*\"[^>]*>([\\s\\S]*?)<\\/article>/gi,\n    /<div[^>]*class=\"[^\"]*job-item[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<div[^>]*data-testid=\"offer\"[^>]*>([\\s\\S]*?)<\\/div>/gi,\n    /<li[^>]*class=\"[^\"]*offer[^\"]*\"[^>]*>([\\s\\S]*?)<\\/li>/gi\n  ];\n  \n  let offerItems = [];\n  let usedSelector = -1;\n  \n  for (let i = 0; i < selectors.length; i++) {\n    offerItems = html.match(selectors[i]) || [];\n    if (offerItems.length > 0) {\n      usedSelector = i;\n      break;\n    }\n  }\n  \n  logger.info('Recherche d\\'offres', {\n    selectorsTestés: selectors.length,\n    selectorUtilisé: usedSelector,\n    itemsTrouvés: offerItems.length\n  });\n  \n  if (offerItems.length === 0) {\n    // Si aucune offre trouvée, on examine le HTML pour comprendre la structure\n    const htmlSample = html.substring(0, 2000);\n    logger.error('Aucune offre trouvée', {\n      htmlSample: htmlSample,\n      possibleTags: {\n        articles: (html.match(/<article/gi) || []).length,\n        lis: (html.match(/<li/gi) || []).length,\n        divs: (html.match(/<div/gi) || []).length\n      }\n    });\n    \n    // Retourner au moins une structure de base pour le debug\n    return [{\n      json: {\n        debug_info: {\n          html_length: html.length,\n          html_sample: htmlSample,\n          no_offers_found: true,\n          config: config\n        }\n      }\n    }];\n  }\n\n  for (let index = 0; index < offerItems.length; index++) {\n    try {\n      const itemHtml = offerItems[index];\n      logger.debug(`Traitement offre ${index}`, {\n        htmlLength: itemHtml.length,\n        htmlPreview: itemHtml.substring(0, 200)\n      });\n      \n      // Sélecteurs plus flexibles\n      const titleSelectors = [\n        /<h3[^>]*>\\s*<p[^>]*class=\"tw-typo-l\"[^>]*>([^<]+)<\\/p>/i,\n        /<h3[^>]*>([^<]+)<\\/h3>/i,\n        /<h2[^>]*>([^<]+)<\\/h2>/i,\n        /<a[^>]*data-cy=\"offerTitle\"[^>]*>([^<]+)<\\/a>/i,\n        /<div[^>]*class=\"[^\"]*title[^\"]*\"[^>]*>([^<]+)<\\/div>/i\n      ];\n      \n      const companySelectors = [\n        /<p[^>]*class=\"tw-typo-s\"[^>]*>([^<]+)<\\/p>/i,\n        /<div[^>]*class=\"[^\"]*company[^\"]*\"[^>]*>([^<]+)<\\/div>/i,\n        /<span[^>]*class=\"[^\"]*company[^\"]*\"[^>]*>([^<]+)<\\/span>/i\n      ];\n      \n      let title = null, company = null, link = null;\n      \n      // Essai de chaque sélecteur de titre\n      for (const selector of titleSelectors) {\n        const match = itemHtml.match(selector);\n        if (match) {\n          title = match[1].trim();\n          break;\n        }\n      }\n      \n      // Essai de chaque sélecteur de société\n      for (const selector of companySelectors) {\n        const match = itemHtml.match(selector);\n        if (match) {\n          company = match[1].trim();\n          break;\n        }\n      }\n      \n      const linkMatch = itemHtml.match(/<a[^>]*href=\"([^\"]+)\"/i);\n      link = linkMatch ? linkMatch[1] : null;\n      \n      const locationMatch = itemHtml.match(/<div[^>]*data-cy=\"localisationCard\"[^>]*>([^<]+)<\\/div>/i) ||\n                           itemHtml.match(/<span[^>]*class=\"[^\"]*location[^\"]*\"[^>]*>([^<]+)<\\/span>/i);\n      \n      const contractMatch = itemHtml.match(/<div[^>]*data-cy=\"contractCard\"[^>]*>([^<]+)<\\/div>/i) ||\n                           itemHtml.match(/<span[^>]*class=\"[^\"]*contract[^\"]*\"[^>]*>([^<]+)<\\/span>/i);\n      \n      const idMatch = itemHtml.match(/data-id-storage-item-id=\"([^\"]+)\"/i) ||\n                     itemHtml.match(/id=\"([^\"]+)\"/i);\n      \n      const offer = {\n        id: idMatch ? idMatch[1] : `offer-${index}`,\n        title: title,\n        company: company,\n        location: locationMatch ? locationMatch[1].trim() : null,\n        contract_type: contractMatch ? contractMatch[1].trim() : null,\n        url: link ? (link.startsWith('http') ? link : config.base_url + link) : null,\n        source_platform: config.site_name,\n        scraped_at: new Date().toISOString(),\n        search_metadata: {\n          source_url: config.search_params.url,\n          keywords: config.search_params.keywords,\n          location_search: config.search_params.location\n        },\n        raw_html_preview: itemHtml.substring(0, 300)\n      };\n      \n      logger.debug(`Offre extraite ${index}`, {\n        title: offer.title,\n        company: offer.company,\n        hasUrl: !!offer.url\n      });\n      \n      // Ajouter même les offres partielles pour le debug\n      if (offer.title || offer.company) {\n        offers.push(offer);\n      }\n      \n    } catch (error) {\n      logger.error(`Erreur extraction offre ${index}`, { error: error.message });\n    }\n  }\n  \n  logger.info('Extraction terminée', { \n    totalItems: offerItems.length,\n    offersExtracted: offers.length,\n    sampleOffer: offers[0] || 'Aucune'\n  });\n  \n  // Toujours retourner quelque chose, même si vide\n  if (offers.length === 0) {\n    return [{\n      json: {\n        no_offers_extracted: true,\n        debug_info: {\n          items_found: offerItems.length,\n          html_length: html.length,\n          config: config\n        }\n      }\n    }];\n  }\n  \n  return offers.map(offer => ({ json: offer }));\n  \n} catch (error) {\n  logger.error('Erreur générale du scraper', { error: error.message });\n  // Retourner une erreur structurée au lieu de throw\n  return [{\n    json: {\n      error: error.message,\n      debug_info: {\n        input_received: !!$input.item,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}"
+      },
+      "id": "5d0a5d6b-57a7-48a4-9016-993a9838f2b1",
+      "name": "🕷️ Scraper Liste Offres",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -820,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-url",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "valid-title",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "318b0977-4ff6-47ae-ae1c-425cf19a5777",
+      "name": "🔍 Filtrer Offres Valides",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        520
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "2885a373-3f08-4065-b299-cce5a47e22c9",
+      "name": "🌐 Fetch Détail Offre",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -680,
+        420
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const offerBase = $('🔍 Filtrer Offres Valides').item.json; const detailResponse = $input.item.json; console.log(`📄 === SCRAPING DÉTAIL: ${offerBase.title} ===`); if (!detailResponse || detailResponse.statusCode !== 200) { console.log('❌ Erreur récupération détail:', detailResponse.statusCode); return [{ json: { ...offerBase, detail_error: 'FETCH_ERROR' } }]; } const cheerio = require('cheerio'); const $ = cheerio.load(detailResponse.body); try { const jobTitle = $('span[data-cy=\"jobTitle\"]').text().trim(); const company = $('h1#main-content > span.tw-contents').text().trim(); let missions = null; $('h2').each((i, h2) => { const text = $(h2).text().toLowerCase(); if (text.includes('mission')) { const nextP = $(h2).next('p.tw-typo-long-m'); if (nextP.length) { missions = nextP.text().trim(); } } }); let profil = null; $('h2').each((i, h2) => { const text = $(h2).text().toLowerCase(); if (text.includes('profil')) { const nextP = $(h2).next('p.tw-typo-long-m'); if (nextP.length) { profil = nextP.text().trim(); } } }); let avantages = null; $('h2').each((i, h2) => { const text = $(h2).text().toLowerCase(); if (text.includes('complémentaires') || text.includes('avantage')) { const nextP = $(h2).next('p.tw-typo-long-m'); if (nextP.length) { avantages = nextP.text().trim(); } } }); const resumeTags = []; $('section').each((i, section) => { const header = $(section).find('div.tw-typo-xl, div.tw-typo-l').text(); if (header.includes('Résumé')) { $(section).find('li.tw-tag-secondary-s').each((j, tag) => { resumeTags.push($(tag).text().trim()); }); } }); const datePublication = $('span.tw-block.tw-typo-xs.tw-text-grey.tw-break-words').text().trim(); const enrichedOffer = { ...offerBase, detail_scraped: true, detail: { job_title_detail: jobTitle || offerBase.title, company_detail: company || offerBase.company, missions: missions, profil_recherche: profil, avantages: avantages, resume_tags: resumeTags, date_publication_detail: datePublication, scraped_detail_at: new Date().toISOString() }, enriched_analysis: { has_detailed_description: !!(missions || profil), description_length: (missions || '').length + (profil || '').length, has_advantages: !!avantages, tags_count: resumeTags.length } }; console.log(`✅ Détail extrait pour: ${enrichedOffer.title}`); console.log(`📋 Missions: ${missions ? 'Oui' : 'Non'}`); console.log(`👤 Profil: ${profil ? 'Oui' : 'Non'}`); console.log(`🎁 Avantages: ${avantages ? 'Oui' : 'Non'}`); return [{ json: enrichedOffer }]; } catch (error) { console.log(`❌ Erreur extraction détail:`, error.message); return [{ json: { ...offerBase, detail_error: error.message } }]; }"
+      },
+      "id": "4f333f20-43bc-4cf0-b8d9-887e1d0a70f7",
+      "name": "📄 Scraper Détail Offre",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PRÉPARATION CLASSIFICATION MISTRAL AVEC DONNÉES ENRICHIES\nconst offer = $input.item.json;\n\nconsole.log(`🤖 === PRÉPARATION MISTRAL: ${offer.title} ===`);\n\n// Construction du prompt avec toutes les données disponibles\nconst fullDescription = [\n  offer.title,\n  offer.detail?.missions || '',\n  offer.detail?.profil_recherche || '',\n  offer.detail?.avantages || ''\n].filter(Boolean).join('\\n\\n');\n\nconst expertPrompt = `EXPERT CLASSIFICATION ALTERNANCE CYBERSÉCURITÉ\n\n=== OFFRE COMPLÈTE À ANALYSER ===\nTITRE: ${offer.title}\nENTREPRISE: ${offer.company}\nLIEU: ${offer.location}\nTYPE CONTRAT: ${offer.contract_type}\nDURÉE: ${offer.duration || 'Non spécifiée'}\nSALAIRE: ${offer.salary_range || 'Non communiqué'}\n\n=== DESCRIPTION COMPLÈTE ===\n${fullDescription}\n\n=== TAGS RÉSUMÉ ===\n${offer.detail?.resume_tags ? offer.detail.resume_tags.join(', ') : 'Aucun'}\n\n=== CRITÈRES VALIDATION STRICTE ===\n\n1. 🎯 TYPE CONTRAT (OBLIGATOIRE):\n   ✅ VALIDE: alternance, apprentissage, contrat professionnalisation\n   ❌ INVALIDE: stage, CDI, CDD, mission, freelance\n\n2. 🛡️ DOMAINE CYBERSÉCURITÉ/RÉSEAU (OBLIGATOIRE):\n   ✅ VALIDE: cybersécurité, sécurité informatique, SOC, SIEM, pentest, audit sécurité\n   ✅ VALIDE: réseau, télécom, infrastructure, systèmes\n   ❌ INVALIDE: développement général, marketing, commercial, RH\n\n3. 📚 NIVEAU FORMATION (IMPORTANT):\n   ✅ PRÉFÉRÉ: master, bac+4, bac+5, junior, débutant, formation\n   ❌ EXCLUSION: senior 5+ ans, expert, manager\n\n4. 🎓 DURÉE APPROPRIÉE:\n   ✅ VALIDE: 1 an, 2 ans, 12-24 mois\n   ❌ INVALIDE: < 6 mois, > 3 ans\n\n=== FORMAT RÉPONSE OBLIGATOIRE ===\nCLASSIFICATION: VALIDE ou INVALIDE\nJUSTIFICATION: [Explication précise en 1 phrase]\nCONFIANCE: [0.1 à 1.0]\n\nAnalyse cette offre maintenant.`;\n\nconst mistralPayload = {\n  model: \"mistral-large-latest\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert RH spécialisé dans l'analyse d'offres d'alternance en cybersécurité et réseaux/télécom. Tu appliques des critères stricts et évalues la pertinence pour un étudiant en Master cybersécurité.\"\n    },\n    {\n      role: \"user\",\n      content: expertPrompt\n    }\n  ],\n  temperature: 0.05,\n  max_tokens: 300\n};\n\nconsole.log('📋 Payload Mistral préparé');\nconsole.log('📊 Longueur description:', fullDescription.length);\n\nreturn {\n  json: {\n    ...offer,\n    mistral_request: {\n      payload_json: JSON.stringify(mistralPayload),\n      model: mistralPayload.model,\n      prompt_length: expertPrompt.length,\n      has_full_description: !!offer.detail?.missions\n    },\n    classification_prompt: expertPrompt,\n    prepared_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "70fcb90c-ffa7-4206-b943-7584d9d069e0",
+      "name": "🎯 Préparer Mistral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fe8GdBIIBwYk8Dj1GvclASPE3j0Zbt95"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ $json.mistral_request.payload_json }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "7b83ae1e-6888-423c-8ca4-324c09088683",
+      "name": "🧠 API Mistral",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        420
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// STOCKAGE FINAL DES OFFRES ANALYSÉES\nconst offer = $('🎯 Préparer Mistral').item.json;\nconst mistralResponse = $input.item.json;\n\nconsole.log(`💾 === STOCKAGE FINAL: ${offer.title} ===`);\n\n// Traitement de la réponse Mistral\nlet classification = 'ERREUR';\nlet justification = 'Erreur traitement';\nlet confidence = 0;\nlet isValid = false;\n\nif (mistralResponse && mistralResponse.choices && mistralResponse.choices[0]) {\n  const content = mistralResponse.choices[0].message.content;\n  \n  // Parsing de la réponse\n  const classMatch = content.match(/CLASSIFICATION:\\s*(VALIDE|INVALIDE)/i);\n  const justifMatch = content.match(/JUSTIFICATION:\\s*([^\\n]+)/i);\n  const confMatch = content.match(/CONFIANCE:\\s*([0-9.]+)/i);\n  \n  classification = classMatch ? classMatch[1].toUpperCase() : 'INCERTAIN';\n  justification = justifMatch ? justifMatch[1].trim() : 'Non trouvée';\n  confidence = confMatch ? parseFloat(confMatch[1]) : 0.5;\n  isValid = classification === 'VALIDE';\n}\n\n// Création de l'objet final complet\nconst finalOffer = {\n  // Métadonnées\n  id: offer.id,\n  scraped_at: offer.scraped_at,\n  source_platform: offer.source_platform,\n  source_url: offer.url,\n  search_metadata: offer.search_metadata,\n  \n  // Données de base\n  title: offer.title,\n  company: offer.company,\n  location: offer.location,\n  contract_type: offer.contract_type,\n  salary_range: offer.salary_range,\n  duration: offer.duration,\n  posted_date: offer.posted_date,\n  \n  // Détails enrichis\n  detail: offer.detail || {},\n  \n  // Analyse IA\n  ai_classification: {\n    classification: classification,\n    justification: justification,\n    confidence: confidence,\n    is_valid_offer: isValid,\n    mistral_model: 'mistral-large-latest',\n    classified_at: new Date().toISOString()\n  },\n  \n  // Analyses préliminaires\n  preliminary_analysis: offer.preliminary_analysis,\n  enriched_analysis: offer.enriched_analysis,\n  \n  // Score final\n  final_score: {\n    matches_criteria: isValid,\n    overall_quality: confidence,\n    has_full_details: !!offer.detail?.missions,\n    recommended: isValid && confidence > 0.7\n  }\n};\n\n// Log du résultat\nif (isValid) {\n  console.log('🎉 ✅ OFFRE VALIDÉE ET STOCKÉE');\n  console.log(`🏢 ${offer.company}`);\n  console.log(`📍 ${offer.location}`);\n  console.log(`📊 Confiance: ${confidence}`);\n} else {\n  console.log(`❌ OFFRE REJETÉE: ${justification}`);\n}\n\nreturn { json: finalOffer };"
+      },
+      "id": "b918eaa7-5c43-4561-abea-b4e824da417d",
+      "name": "💾 Stocker Offre Finale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c6ac049a-52a9-428b-81aa-f6b2ecd1e2f2",
+      "name": "📋 Split Configs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1260,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-type",
+              "name": "error_type",
+              "value": "INVALID_OFFER",
+              "type": "string"
+            },
+            {
+              "id": "error-title",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "error-reason",
+              "name": "error_reason",
+              "value": "Offre invalide ou URL manquante",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1ec336df-aacf-4c5e-a7f3-1092860f560e",
+      "name": "❌ Gérer Erreurs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -660,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('✅ Fin de boucle Split Configs : toutes les configurations ont été traitées.');\nreturn [{ json: { message: 'Fin de boucle : toutes les configurations ont été traitées', finished_at: new Date().toISOString() } }];"
+      },
+      "id": "4ac149fd-21bb-46ed-802f-874a2a0827ae",
+      "name": "✅ Fin de Boucle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        160
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🚀 Start": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Config HelloWork",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Config HelloWork": {
+      "main": [
+        [
+          {
+            "node": "📋 Split Configs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Split Configs": {
+      "main": [
+        [
+          {
+            "node": "✅ Fin de Boucle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🌐 Fetch Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Fetch Page": {
+      "main": [
+        [
+          {
+            "node": "📦 Extraire Conteneur Offres",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Gérer Erreurs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Extraire Conteneur Offres": {
+      "main": [
+        [
+          {
+            "node": "🕷️ Scraper Liste Offres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🕷️ Scraper Liste Offres": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrer Offres Valides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Filtrer Offres Valides": {
+      "main": [
+        [
+          {
+            "node": "🌐 Fetch Détail Offre",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Gérer Erreurs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Fetch Détail Offre": {
+      "main": [
+        [
+          {
+            "node": "📄 Scraper Détail Offre",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Gérer Erreurs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Scraper Détail Offre": {
+      "main": [
+        [
+          {
+            "node": "🎯 Préparer Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Préparer Mistral": {
+      "main": [
+        [
+          {
+            "node": "🧠 API Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 API Mistral": {
+      "main": [
+        [
+          {
+            "node": "💾 Stocker Offre Finale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a4d99d72-d443-49ff-aa7a-67559a8c781d",
+  "meta": {
+    "instanceId": "77649bb8ece500ac0c757974f51e9cabb1d2bb2ab3e605617a5d419377d2a6a4"
+  },
+  "id": "CHFlquhL6eeifX0D",
+  "tags": []
+}
